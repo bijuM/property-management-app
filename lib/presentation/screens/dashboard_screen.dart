@@ -13,7 +13,9 @@ import '../providers/dashboard_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/navigation_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/villa_provider.dart';
+import 'notifications/notifications_screen.dart';
 import 'villa_detail_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -257,11 +259,13 @@ double _calculatePendingRent({
   return math.max(expectedRent - rentReceived, 0).toDouble();
 }
 
-class _DashboardHeader extends StatelessWidget {
+class _DashboardHeader extends ConsumerWidget {
   const _DashboardHeader();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+
     return SizedBox(
       height: 76,
       child: Stack(
@@ -301,37 +305,49 @@ class _DashboardHeader extends StatelessWidget {
           ),
           Align(
             alignment: Alignment.centerRight,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(
-                  Icons.notifications_none_rounded,
-                  color: Colors.black,
-                  size: 32,
-                ),
-                Positioned(
-                  right: -5,
-                  top: -6,
-                  child: Container(
-                    height: 21,
-                    width: 21,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF04438),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Text(
-                      '3',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
+            child: IconButton(
+              tooltip: 'Notifications',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationsScreen(),
+                  ),
+                );
+              },
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    color: Colors.black,
+                    size: 32,
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: -5,
+                      top: -6,
+                      child: Container(
+                        height: 21,
+                        constraints: const BoxConstraints(minWidth: 21),
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF04438),
+                          borderRadius: BorderRadius.circular(11),
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
