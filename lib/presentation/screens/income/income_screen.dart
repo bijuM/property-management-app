@@ -146,18 +146,12 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
               else
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final crossAxisCount = constraints.maxWidth >= 1100
-                        ? 3
-                        : constraints.maxWidth >= 720
-                            ? 2
-                            : 1;
-
                     return GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: filteredIncomes.length,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
+                        crossAxisCount: 1,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
                         mainAxisExtent: 76,
@@ -189,6 +183,7 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
           ? Padding(
               padding: const EdgeInsets.only(bottom: 88),
               child: FloatingActionButton.extended(
+                heroTag: 'add-income-fab',
                 onPressed: _openAddIncome,
                 backgroundColor: const Color(0xFF12B76A),
                 foregroundColor: Colors.white,

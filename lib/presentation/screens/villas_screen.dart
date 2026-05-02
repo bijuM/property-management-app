@@ -223,6 +223,7 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
       ),
       floatingActionButton: canManageVillas
           ? FloatingActionButton(
+              heroTag: 'add-villa-fab',
               onPressed: _openAddVillaScreen,
               tooltip: 'Add Villa',
               child: const Icon(Icons.add),

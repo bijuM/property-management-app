@@ -53,6 +53,7 @@ class UsersScreen extends ConsumerWidget {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 88),
         child: FloatingActionButton.extended(
+          heroTag: 'add-user-fab',
           onPressed: () => _openAddUser(context),
           icon: const Icon(Icons.person_add_alt_1_rounded),
           label: const Text('Add User'),

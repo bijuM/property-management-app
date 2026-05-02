@@ -142,21 +142,15 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           else
             LayoutBuilder(
               builder: (context, constraints) {
-                final crossAxisCount = constraints.maxWidth >= 1100
-                    ? 3
-                    : constraints.maxWidth >= 720
-                        ? 2
-                        : 1;
-
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: filteredExpenses.length,
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: crossAxisCount,
+                    crossAxisCount: 1,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    mainAxisExtent: 184,
+                    mainAxisExtent: 76,
                   ),
                   itemBuilder: (context, index) {
                     final expense = filteredExpenses[index];
@@ -181,6 +175,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           ? Padding(
               padding: const EdgeInsets.only(bottom: 88),
               child: FloatingActionButton.extended(
+                heroTag: 'add-expense-fab',
                 onPressed: _openAddExpense,
                 backgroundColor: const Color(0xFFF04438),
                 foregroundColor: Colors.white,
