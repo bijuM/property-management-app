@@ -68,145 +68,163 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
         elevation: 0,
       ),
       body: villasAsync.when(
-        data: (villas) => Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            children: [
-              _FormPanel(
-                children: [
-                  const _SectionTitle(
-                    title: 'Income Details',
-                    icon: Icons.payments_rounded,
-                  ),
-                  const SizedBox(height: 18),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedVillaId,
-                    decoration: _decoration('Villa'),
-                    items: villas
-                        .map(
-                          (villa) => DropdownMenuItem(
-                            value: villa.id,
-                            child: Text(_villaLabel(villa)),
-                          ),
-                        )
-                        .toList(),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Villa is required'
-                        : null,
-                    onChanged: (value) {
-                      setState(() => _selectedVillaId = value);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedIncomeType,
-                    decoration: _decoration('Income Type'),
-                    items: IncomeTypes.values
-                        .map(
-                          (type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type),
-                          ),
-                        )
-                        .toList(),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Income type is required'
-                        : null,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _selectedIncomeType = value);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _amountController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: _decoration('Amount', prefixText: 'QAR '),
-                    validator: (value) {
-                      final amount = double.tryParse(value?.trim() ?? '');
-                      if (amount == null) return 'Amount is required';
-                      if (amount <= 0) return 'Amount must be greater than 0';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  _DateField(
-                    label: 'Payment Date',
-                    value: _paymentDate,
-                    formatter: DateFormat('dd MMM yyyy'),
-                    onTap: () => _pickDate(
-                      initialDate: _paymentDate,
-                      onPicked: (date) => setState(() => _paymentDate = date),
+        data: (villas) {
+          final occupiedVillas = villas.where(_isOccupiedVilla).toList();
+          final selectedVillaIsOccupied =
+              occupiedVillas.any((villa) => villa.id == _selectedVillaId);
+
+          return Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                _FormPanel(
+                  children: [
+                    const _SectionTitle(
+                      title: 'Income Details',
+                      icon: Icons.payments_rounded,
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedPaymentMethod,
-                    decoration: _decoration('Payment Method'),
-                    items: IncomePaymentMethods.values
-                        .map(
-                          (method) => DropdownMenuItem(
-                            value: method,
-                            child: Text(method),
-                          ),
-                        )
-                        .toList(),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Payment method is required'
-                        : null,
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() => _selectedPaymentMethod = value);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  _DateField(
-                    label: 'Month Covered',
-                    value: _monthCovered,
-                    formatter: DateFormat('MMMM yyyy'),
-                    onTap: () => _pickDate(
-                      initialDate: _monthCovered,
-                      onPicked: (date) => setState(
-                        () =>
-                            _monthCovered = DateTime(date.year, date.month, 1),
+                    const SizedBox(height: 18),
+                    DropdownButtonFormField<String>(
+                      initialValue:
+                          selectedVillaIsOccupied ? _selectedVillaId : null,
+                      decoration: _decoration('Villa'),
+                      items: occupiedVillas
+                          .map(
+                            (villa) => DropdownMenuItem(
+                              value: villa.id,
+                              child: Text(_villaLabel(villa)),
+                            ),
+                          )
+                          .toList(),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Villa is required'
+                          : null,
+                      onChanged: (value) {
+                        setState(() => _selectedVillaId = value);
+                      },
+                    ),
+                    if (occupiedVillas.isEmpty) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Income can only be added for occupied villas.',
+                        style: TextStyle(
+                          color: Color(0xFFF04438),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedIncomeType,
+                      decoration: _decoration('Income Type'),
+                      items: IncomeTypes.values
+                          .map(
+                            (type) => DropdownMenuItem(
+                              value: type,
+                              child: Text(type),
+                            ),
+                          )
+                          .toList(),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Income type is required'
+                          : null,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedIncomeType = value);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _amountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: _decoration('Amount', prefixText: 'QAR '),
+                      validator: (value) {
+                        final amount = double.tryParse(value?.trim() ?? '');
+                        if (amount == null) return 'Amount is required';
+                        if (amount <= 0) return 'Amount must be greater than 0';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _DateField(
+                      label: 'Payment Date',
+                      value: _paymentDate,
+                      formatter: DateFormat('dd MMM yyyy'),
+                      onTap: () => _pickDate(
+                        initialDate: _paymentDate,
+                        onPicked: (date) => setState(() => _paymentDate = date),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _notesController,
-                    minLines: 3,
-                    maxLines: 5,
-                    decoration: _decoration('Notes'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              FilledButton.icon(
-                onPressed:
-                    controllerState.isLoading ? null : () => _save(villas),
-                icon: controllerState.isLoading
-                    ? const SizedBox(
-                        height: 18,
-                        width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check_rounded),
-                label: Text(_isEditing ? 'Update Income' : 'Save Income'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF12B76A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedPaymentMethod,
+                      decoration: _decoration('Payment Method'),
+                      items: IncomePaymentMethods.values
+                          .map(
+                            (method) => DropdownMenuItem(
+                              value: method,
+                              child: Text(method),
+                            ),
+                          )
+                          .toList(),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Payment method is required'
+                          : null,
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedPaymentMethod = value);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    _DateField(
+                      label: 'Month Covered',
+                      value: _monthCovered,
+                      formatter: DateFormat('MMMM yyyy'),
+                      onTap: () => _pickDate(
+                        initialDate: _monthCovered,
+                        onPicked: (date) => setState(
+                          () => _monthCovered =
+                              DateTime(date.year, date.month, 1),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _notesController,
+                      minLines: 3,
+                      maxLines: 5,
+                      decoration: _decoration('Notes'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                FilledButton.icon(
+                  onPressed:
+                      controllerState.isLoading ? null : () => _save(villas),
+                  icon: controllerState.isLoading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.check_rounded),
+                  label: Text(_isEditing ? 'Update Income' : 'Save Income'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF12B76A),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
         error: (error, _) => Center(child: Text(error.toString())),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
@@ -256,6 +274,10 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     final selectedVilla =
         villas.where((villa) => villa.id == _selectedVillaId).firstOrNull;
     if (selectedVilla == null) return;
+    if (!_isOccupiedVilla(selectedVilla)) {
+      _showMessage('Income can only be added for occupied villas.');
+      return;
+    }
 
     final income = Income(
       id: widget.income?.id ?? const Uuid().v4(),
@@ -280,10 +302,20 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
     Navigator.pop(context);
   }
 
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   static String _villaLabel(VillaModel villa) {
     final number =
         villa.villaNumber.trim().isEmpty ? '' : ' #${villa.villaNumber}';
     return '${villa.villaName}$number';
+  }
+
+  static bool _isOccupiedVilla(VillaModel villa) {
+    return villa.status.name.toLowerCase() == 'occupied';
   }
 }
 
