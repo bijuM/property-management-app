@@ -91,8 +91,9 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 24),
                   _MonthFilter(
                     selectedMonth: selectedMonth,
-                    onChangeMonth: (offset) =>
-                        _changeMonth(ref, selectedMonth, offset),
+                    onSelectMonth: () =>
+                        _selectMonth(context, ref, selectedMonth),
+                    onResetToCurrentMonth: () => _resetToCurrentMonth(ref),
                   ),
                   const SizedBox(height: 18),
                   _MetricGrid(
@@ -178,10 +179,33 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  void _changeMonth(WidgetRef ref, DateTime currentMonth, int monthOffset) {
+  Future<void> _selectMonth(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime selectedMonth,
+  ) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedMonth,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100, 12, 31),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+
+    if (picked == null) return;
+
     ref.read(selectedMonthProvider.notifier).state = DateTime(
-      currentMonth.year,
-      currentMonth.month + monthOffset,
+      picked.year,
+      picked.month,
+      1,
+    );
+  }
+
+  void _resetToCurrentMonth(WidgetRef ref) {
+    final now = DateTime.now();
+    ref.read(selectedMonthProvider.notifier).state = DateTime(
+      now.year,
+      now.month,
       1,
     );
   }
@@ -275,11 +299,13 @@ class _DashboardHeader extends StatelessWidget {
 
 class _MonthFilter extends StatelessWidget {
   final DateTime selectedMonth;
-  final ValueChanged<int> onChangeMonth;
+  final VoidCallback onSelectMonth;
+  final VoidCallback onResetToCurrentMonth;
 
   const _MonthFilter({
     required this.selectedMonth,
-    required this.onChangeMonth,
+    required this.onSelectMonth,
+    required this.onResetToCurrentMonth,
   });
 
   @override
@@ -290,7 +316,7 @@ class _MonthFilter extends StatelessWidget {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: () => onChangeMonth(-1),
+            onTap: onSelectMonth,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -320,7 +346,7 @@ class _MonthFilter extends StatelessWidget {
           ),
         ),
         GestureDetector(
-          onTap: () => onChangeMonth(1),
+          onTap: onResetToCurrentMonth,
           child: Container(
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 14),
