@@ -37,7 +37,7 @@ class VillaCard extends StatelessWidget {
           border: Border.all(color: AppColors.border, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -48,7 +48,7 @@ class VillaCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(
@@ -115,7 +115,7 @@ class VillaCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getStatusColor(villa.status).withOpacity(0.15),
+                color: _getStatusColor(villa.status).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(5),
               ),
               child: Text(

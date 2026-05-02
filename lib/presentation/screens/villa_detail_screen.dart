@@ -107,7 +107,7 @@ class VillaDetailScreen extends ConsumerWidget {
                       border: Border.all(color: AppColors.border, width: 1),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -144,7 +144,7 @@ class VillaDetailScreen extends ConsumerWidget {
                               ),
                               decoration: BoxDecoration(
                                 color: _getStatusColor(villa.status)
-                                    .withOpacity(0.1),
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -185,13 +185,13 @@ class VillaDetailScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          AppColors.success.withOpacity(0.1),
-                          AppColors.success.withOpacity(0.05),
+                          AppColors.success.withValues(alpha: 0.1),
+                          AppColors.success.withValues(alpha: 0.05),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppColors.success.withOpacity(0.3),
+                        color: AppColors.success.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -418,7 +418,8 @@ class VillaDetailScreen extends ConsumerWidget {
                         icon: const Icon(Icons.delete_outline),
                         label: const Text('Delete Villa'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.error.withOpacity(0.1),
+                          backgroundColor:
+                              AppColors.error.withValues(alpha: 0.1),
                           foregroundColor: AppColors.error,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),

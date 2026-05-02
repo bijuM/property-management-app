@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/income_repository.dart';
@@ -13,7 +16,11 @@ final incomeRepositoryProvider = Provider<IncomeRepository>((ref) {
 
 final incomeListProvider = StreamProvider<List<Income>>((ref) {
   final repository = ref.watch(incomeRepositoryProvider);
-  return repository.watchAllIncomes();
+  final syncService = ref.watch(firebaseSyncServiceProvider);
+  return _mergeIncomeStreams(
+    localStream: repository.watchAllIncomes(),
+    cloudStream: syncService.watchCloudIncomes(),
+  );
 });
 
 final incomeControllerProvider =
@@ -119,4 +126,61 @@ class IncomeController extends StateNotifier<AsyncValue<void>> {
 
 bool _isSameMonth(DateTime date, DateTime month) {
   return date.year == month.year && date.month == month.month;
+}
+
+Stream<List<Income>> _mergeIncomeStreams({
+  required Stream<List<Income>> localStream,
+  required Stream<List<Income>> cloudStream,
+}) {
+  late StreamController<List<Income>> controller;
+  StreamSubscription<List<Income>>? localSubscription;
+  StreamSubscription<List<Income>>? cloudSubscription;
+  var localIncomes = <Income>[];
+  var cloudIncomes = <Income>[];
+
+  void emitMerged() {
+    final byId = <String, Income>{};
+    for (final income in localIncomes) {
+      byId[income.id] = income;
+    }
+    for (final income in cloudIncomes) {
+      byId[income.id] = income;
+    }
+
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.paymentDate.compareTo(a.paymentDate));
+    controller.add(merged);
+    debugPrint(
+      '[IncomeProvider] loaded local=${localIncomes.length}, cloud=${cloudIncomes.length}, merged=${merged.length}',
+    );
+  }
+
+  controller = StreamController<List<Income>>(
+    onListen: () {
+      localSubscription = localStream.listen(
+        (incomes) {
+          localIncomes = incomes;
+          emitMerged();
+        },
+        onError: controller.addError,
+      );
+
+      cloudSubscription = cloudStream.listen(
+        (incomes) {
+          cloudIncomes = incomes;
+          emitMerged();
+        },
+        onError: (error, stackTrace) {
+          debugPrint('[IncomeProvider] cloud income stream failed: $error');
+          emitMerged();
+        },
+      );
+    },
+    onCancel: () async {
+      await localSubscription?.cancel();
+      await cloudSubscription?.cancel();
+    },
+  );
+
+  return controller.stream;
 }

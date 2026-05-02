@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/firebase_sync_service.dart';
+import 'expense_provider.dart';
 import 'auth_provider.dart';
+import 'income_provider.dart';
+import 'villa_provider.dart';
 
 final connectivityServiceProvider = Provider<ConnectivityService>((ref) {
   return ConnectivityService();
@@ -46,7 +49,30 @@ class SyncController {
   const SyncController(this._ref);
 
   Future<void> syncNow() async {
+    await queueAllLocalData();
     await _ref.read(firebaseSyncServiceProvider).syncAllPendingData();
+    _refresh();
+  }
+
+  Future<void> queueAllLocalData() async {
+    final currentUser = _ref.read(authProvider).currentUser;
+    if (currentUser == null) return;
+
+    final syncService = _ref.read(firebaseSyncServiceProvider);
+    final villas = await _ref.read(villasProvider.future);
+    final incomes = _ref.read(incomeListProvider).valueOrNull ?? const [];
+    final expenses = _ref.read(expenseProvider);
+
+    for (final villa in villas) {
+      await syncService.queueVilla(villa: villa, userId: currentUser.id);
+    }
+    for (final income in incomes) {
+      await syncService.queueIncome(income: income, userId: currentUser.id);
+    }
+    for (final expense in expenses) {
+      await syncService.queueExpense(expense: expense, userId: currentUser.id);
+    }
+    await syncService.queueUser(user: currentUser, userId: currentUser.id);
     _refresh();
   }
 

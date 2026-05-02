@@ -36,12 +36,17 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
   void initState() {
     super.initState();
     if (widget.villa != null) {
-      _villaNameController = TextEditingController(text: widget.villa!.villaName);
-      _villaNumberController = TextEditingController(text: widget.villa!.villaNumber);
+      _villaNameController =
+          TextEditingController(text: widget.villa!.villaName);
+      _villaNumberController =
+          TextEditingController(text: widget.villa!.villaNumber);
       _locationController = TextEditingController(text: widget.villa!.location);
-      _tenantNameController = TextEditingController(text: widget.villa!.tenantName);
-      _tenantPhoneController = TextEditingController(text: widget.villa!.tenantPhone);
-      _monthlyRentController = TextEditingController(text: widget.villa!.monthlyRent.toString());
+      _tenantNameController =
+          TextEditingController(text: widget.villa!.tenantName);
+      _tenantPhoneController =
+          TextEditingController(text: widget.villa!.tenantPhone);
+      _monthlyRentController =
+          TextEditingController(text: widget.villa!.monthlyRent.toString());
       _contractStartDate = widget.villa!.contractStartDate;
       _contractEndDate = widget.villa!.contractEndDate;
       _paymentDueDay = widget.villa!.paymentDueDay;
@@ -122,7 +127,7 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -152,7 +157,7 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
         border: Border.all(color: AppColors.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -197,13 +202,13 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppColors.primary.withOpacity(0.08),
-                        AppColors.primary.withOpacity(0.02),
+                        AppColors.primary.withValues(alpha: 0.08),
+                        AppColors.primary.withValues(alpha: 0.02),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: AppColors.primary.withOpacity(0.2),
+                      color: AppColors.primary.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
@@ -266,7 +271,8 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                 const SizedBox(height: 24),
 
                 // Financial Information Section
-                _buildSectionHeader('Financial Details', Icons.attach_money_outlined),
+                _buildSectionHeader(
+                    'Financial Details', Icons.attach_money_outlined),
                 _buildFormCard(
                   children: [
                     AppTextField(
@@ -274,7 +280,8 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                       label: 'Monthly Rent *',
                       hint: 'Enter amount',
                       prefixIcon: Icons.currency_rupee,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       validator: (value) {
                         if (value?.isEmpty ?? true) {
                           return 'Monthly rent is required';
@@ -301,7 +308,8 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                 const SizedBox(height: 24),
 
                 // Contract Information Section
-                _buildSectionHeader('Contract Terms', Icons.description_outlined),
+                _buildSectionHeader(
+                    'Contract Terms', Icons.description_outlined),
                 _buildFormCard(
                   children: [
                     AppDatePickerField(
@@ -324,7 +332,8 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
 
                 // Tenant Information Section (conditional)
                 if (_isTenantRequired) ...[
-                  _buildSectionHeader('Tenant Information', Icons.person_outlined),
+                  _buildSectionHeader(
+                      'Tenant Information', Icons.person_outlined),
                   _buildFormCard(
                     children: [
                       AppTextField(
@@ -356,7 +365,8 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                   ),
                   const SizedBox(height: 24),
                 ] else ...[
-                  _buildSectionHeader('Tenant Information (Optional)', Icons.person_outlined),
+                  _buildSectionHeader(
+                      'Tenant Information (Optional)', Icons.person_outlined),
                   _buildFormCard(
                     children: [
                       AppTextField(
@@ -388,7 +398,7 @@ class _AddEditVillaScreenState extends ConsumerState<AddEditVillaScreen> {
                           foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           side: BorderSide(
-                            color: AppColors.primary.withOpacity(0.3),
+                            color: AppColors.primary.withValues(alpha: 0.3),
                             width: 1.5,
                           ),
                         ),

@@ -10,13 +10,12 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
-      
+
       // Color Scheme
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.primaryLight,
         error: AppColors.error,
-        background: AppColors.background,
         surface: AppColors.surface,
       ),
 
@@ -80,7 +79,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.background,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.border),
@@ -102,7 +102,8 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
         hintStyle: AppStyles.bodyMedium.copyWith(color: AppColors.textTertiary),
-        labelStyle: AppStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+        labelStyle:
+            AppStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
         errorStyle: AppStyles.labelSmall.copyWith(color: AppColors.error),
       ),
 

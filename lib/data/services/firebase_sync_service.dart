@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/enums.dart';
@@ -28,6 +29,14 @@ class FirebaseSyncService {
         _connectivityService = connectivityService ?? ConnectivityService();
 
   void startAutoSync() {
+    if (!_isFirestoreEnabled) {
+      debugPrint(
+        '[FirebaseSync] Firestore sync disabled on $defaultTargetPlatform. '
+        'Run flutterfire configure for this platform before enabling cloud sync.',
+      );
+      return;
+    }
+
     _connectivitySubscription ??=
         _connectivityService.onlineStatus.listen((isOnline) {
       if (isOnline) {
@@ -132,6 +141,7 @@ class FirebaseSyncService {
   Future<void> syncPendingNotifications() => _syncCollection('notifications');
 
   Future<void> syncAllPendingData() async {
+    if (!_isFirestoreEnabled) return;
     if (!await _connectivityService.isOnline) return;
 
     await syncPendingVillas();
@@ -148,32 +158,53 @@ class FirebaseSyncService {
   }
 
   Stream<List<VillaModel>> watchCloudVillas() {
-    return _firestore
-        .collection('villas')
-        .where('isDeleted', isEqualTo: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => _villaFromJson(doc.data())).toList();
+    if (!_isFirestoreEnabled) {
+      debugPrint('[FirebaseSync] cloud villa stream disabled on desktop.');
+      return Stream.value(const []);
+    }
+
+    return _firestore.collection('villas').snapshots().map((snapshot) {
+      final activeDocs = snapshot.docs
+          .where((doc) => doc.data()['isDeleted'] != true)
+          .toList();
+      debugPrint(
+        '[FirebaseSync] cloud villas snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
+      );
+      return activeDocs.map((doc) => _villaFromJson(doc.data())).toList();
     });
   }
 
   Stream<List<Income>> watchCloudIncomes() {
-    return _firestore
-        .collection('incomes')
-        .where('isDeleted', isEqualTo: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => _incomeFromJson(doc.data())).toList();
+    if (!_isFirestoreEnabled) {
+      debugPrint('[FirebaseSync] cloud income stream disabled on desktop.');
+      return Stream.value(const []);
+    }
+
+    return _firestore.collection('incomes').snapshots().map((snapshot) {
+      final activeDocs = snapshot.docs
+          .where((doc) => doc.data()['isDeleted'] != true)
+          .toList();
+      debugPrint(
+        '[FirebaseSync] cloud incomes snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
+      );
+      return activeDocs.map((doc) => _incomeFromJson(doc.data())).toList();
     });
   }
 
   Stream<List<Expense>> watchCloudExpenses() {
-    return _firestore
-        .collection('expenses')
-        .where('isDeleted', isEqualTo: false)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => _expenseFromJson(doc.data())).toList();
+    if (!_isFirestoreEnabled) {
+      debugPrint('[FirebaseSync] cloud expense stream disabled on desktop.');
+      return Stream.value(const []);
+    }
+
+    return _firestore.collection('expenses').snapshots().map((snapshot) {
+      final activeDocs = snapshot.docs
+          .where((doc) => doc.data()['isDeleted'] != true)
+          .toList();
+      debugPrint(
+        '[FirebaseSync] cloud expenses snapshot raw=${snapshot.docs.length}, active=${activeDocs.length}',
+      );
+      return activeDocs.map((doc) => _expenseFromJson(doc.data())).toList();
     });
   }
 
@@ -236,6 +267,7 @@ class FirebaseSyncService {
     );
     queue.add(record);
     await _saveQueue(queue);
+    debugPrint('[FirebaseSync] queued $collection/$id');
 
     if (await _connectivityService.isOnline) {
       await _syncCollection(collection);
@@ -243,6 +275,7 @@ class FirebaseSyncService {
   }
 
   Future<void> _syncCollection(String collection) async {
+    if (!_isFirestoreEnabled) return;
     if (!await _connectivityService.isOnline) return;
 
     final queue = await _loadQueue();
@@ -409,6 +442,21 @@ class FirebaseSyncService {
     if (value is Timestamp) return value.toDate();
     if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
     return DateTime.now();
+  }
+
+  bool get _isFirestoreEnabled {
+    if (kIsWeb) return true;
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return true;
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return false;
+    }
   }
 }
 
