@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/constants/enums.dart';
 import '../../../core/constants/app_permissions.dart';
 import '../../../data/services/report_export_service.dart';
 import '../../../domain/models/expense.dart';
@@ -161,17 +160,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final monthlyIncomes = incomes
         .where((income) => _isSameMonth(income.paymentDate, _selectedMonth))
         .toList();
+    final monthlyRentIncomes = incomes
+        .where((income) =>
+            _isRentIncome(income) &&
+            _isSameMonth(income.monthCovered, _selectedMonth))
+        .toList();
     final monthlyExpenses = expenses
         .where((expense) => _isSameMonth(expense.expenseDate, _selectedMonth))
         .toList();
-    final occupiedVillas =
-        villas.where((villa) => villa.status == VillaStatus.occupied).toList();
+    final occupiedVillas = villas.where(_isOccupiedVilla).toList();
+    final occupiedVillaIds = occupiedVillas.map((villa) => villa.id).toSet();
     final expectedRent = occupiedVillas.fold<double>(
       0,
       (sum, villa) => sum + villa.monthlyRent,
     );
-    final rentIncome = monthlyIncomes
-        .where((income) => income.incomeType == IncomeTypes.rent)
+    final rentIncome = monthlyRentIncomes
+        .where((income) => occupiedVillaIds.contains(income.villaId))
         .fold<double>(0, (sum, income) => sum + income.amount);
     final totalIncome =
         monthlyIncomes.fold<double>(0, (sum, income) => sum + income.amount);
@@ -196,19 +200,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           .toList();
       final villaIncome =
           villaIncomes.fold<double>(0, (sum, income) => sum + income.amount);
-      final villaRentIncome = villaIncomes
-          .where((income) => income.incomeType == IncomeTypes.rent)
+      final villaRentIncome = monthlyRentIncomes
+          .where((income) =>
+              income.villaId == villa.id && occupiedVillaIds.contains(villa.id))
           .fold<double>(0, (sum, income) => sum + income.amount);
       final villaExpense =
           villaExpenses.fold<double>(0, (sum, expense) => sum + expense.amount);
-      final villaExpectedRent =
-          villa.status == VillaStatus.occupied ? villa.monthlyRent : 0.0;
+      final isOccupied = _isOccupiedVilla(villa);
+      final villaExpectedRent = isOccupied ? villa.monthlyRent : 0.0;
 
       return VillaProfitReportItem(
         villaId: villa.id,
         villaName: villa.villaName,
-        tenantName:
-            villa.status == VillaStatus.occupied ? villa.tenantName : 'Vacant',
+        tenantName: isOccupied ? villa.tenantName : 'Vacant',
         expectedRent: villaExpectedRent,
         receivedIncome: villaIncome,
         totalExpense: villaExpense,
@@ -220,10 +224,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     final pendingRentItems = occupiedVillas
         .map((villa) {
-          final receivedRent = monthlyIncomes
+          final receivedRent = monthlyRentIncomes
               .where((income) =>
                   income.villaId == villa.id &&
-                  income.incomeType == IncomeTypes.rent)
+                  occupiedVillaIds.contains(income.villaId))
               .fold<double>(0, (sum, income) => sum + income.amount);
 
           return PendingRentReportItem(
@@ -458,6 +462,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   bool _isSameMonth(DateTime date, DateTime month) {
     return date.year == month.year && date.month == month.month;
+  }
+
+  bool _isOccupiedVilla(VillaModel villa) {
+    return villa.status.name.toLowerCase() == 'occupied';
+  }
+
+  bool _isRentIncome(Income income) {
+    return income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase();
   }
 
   String _money(double value) => 'QAR ${_moneyFormat.format(value)}';

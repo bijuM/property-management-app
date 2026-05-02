@@ -38,8 +38,11 @@ final incomeVillaSummaryProvider =
   return incomesAsync.whenData((incomes) {
     final summary = <String, double>{};
 
-    for (final income
-        in incomes.where((income) => _isSameMonth(income.paymentDate, month))) {
+    for (final income in incomes.where(
+      (income) =>
+          income.incomeType.toLowerCase() == IncomeTypes.rent.toLowerCase() &&
+          _isSameMonth(income.monthCovered, month),
+    )) {
       summary.update(
         income.villaId,
         (value) => value + income.amount,

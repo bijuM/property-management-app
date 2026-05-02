@@ -69,20 +69,36 @@ class DashboardScreen extends ConsumerWidget {
                 0,
                 (sum, value) => sum + value,
               );
-              final expectedRent = villas.fold<double>(
+              final occupiedVillas = villas.where(_isOccupiedVilla).toList();
+              final occupiedVillaIds =
+                  occupiedVillas.map((villa) => villa.id).toSet();
+              final rentReceivedByVilla = Map<String, double>.fromEntries(
+                occupiedVillaIds.map((villaId) => MapEntry(villaId, 0)),
+              );
+              incomeByVilla.forEach((villaId, amount) {
+                if (occupiedVillaIds.contains(villaId)) {
+                  rentReceivedByVilla[villaId] = amount;
+                }
+              });
+              final expectedRent = occupiedVillas.fold<double>(
                 0,
                 (sum, villa) => sum + villa.monthlyRent,
               );
+              final rentReceived = rentReceivedByVilla.values.fold<double>(
+                0,
+                (sum, amount) => sum + amount,
+              );
               final pendingRent =
-                  math.max(expectedRent - totalIncome, 0).toDouble();
-              final paidVillas = villas
+                  math.max(expectedRent - rentReceived, 0).toDouble();
+              final paidVillas = occupiedVillas
                   .where((villa) =>
-                      (incomeByVilla[villa.id] ?? 0) >= villa.monthlyRent &&
+                      (rentReceivedByVilla[villa.id] ?? 0) >=
+                          villa.monthlyRent &&
                       villa.monthlyRent > 0)
                   .length;
               final progress = expectedRent == 0
                   ? 0.0
-                  : (totalIncome / expectedRent).clamp(0.0, 1.0);
+                  : (rentReceived / expectedRent).clamp(0.0, 1.0);
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(18, 8, 18, 112),
@@ -100,7 +116,8 @@ class DashboardScreen extends ConsumerWidget {
                     totalIncome: totalIncome,
                     totalExpense: totalExpense,
                     pendingRent: pendingRent,
-                    pendingVillas: math.max(villas.length - paidVillas, 0),
+                    pendingVillas:
+                        math.max(occupiedVillas.length - paidVillas, 0),
                   ),
                   const SizedBox(height: 14),
                   _QuickActions(
@@ -116,16 +133,16 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _RentCollectionCard(
-                    collected: totalIncome,
+                    collected: rentReceived,
                     pending: pendingRent,
                     paidVillas: paidVillas,
-                    totalVillas: villas.length,
+                    totalVillas: occupiedVillas.length,
                     progress: progress,
                   ),
                   const SizedBox(height: 22),
                   _VillaSummary(
                     villas: villas,
-                    incomeByVilla: incomeByVilla,
+                    incomeByVilla: rentReceivedByVilla,
                     onViewAll: () =>
                         ref.read(selectedTabProvider.notifier).state = 1,
                   ),
@@ -212,6 +229,10 @@ class DashboardScreen extends ConsumerWidget {
 
   static String money(double value) =>
       'QAR ${_moneyFormat.format(value.round())}';
+}
+
+bool _isOccupiedVilla(VillaModel villa) {
+  return villa.status.name.toLowerCase() == 'occupied';
 }
 
 class _DashboardHeader extends StatelessWidget {
@@ -950,8 +971,9 @@ class _VillaSummary extends StatelessWidget {
                   children: List.generate(visibleVillas.length, (index) {
                     final villa = visibleVillas[index];
                     final received = incomeByVilla[villa.id] ?? 0;
-                    final pending =
-                        math.max(villa.monthlyRent - received, 0).toDouble();
+                    final pending = _isOccupiedVilla(villa)
+                        ? math.max(villa.monthlyRent - received, 0).toDouble()
+                        : 0.0;
 
                     return Column(
                       children: [
@@ -985,9 +1007,9 @@ class _VillaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isVacant = villa.status == VillaStatus.vacant;
-    final isPaid = !isVacant && pending <= 0 && villa.monthlyRent > 0;
-    final isPartial = !isVacant && received > 0 && pending > 0;
+    final isOccupied = _isOccupiedVilla(villa);
+    final isPaid = isOccupied && pending <= 0 && villa.monthlyRent > 0;
+    final isPartial = isOccupied && received > 0 && pending > 0;
 
     return InkWell(
       onTap: () {
@@ -1037,7 +1059,9 @@ class _VillaRow extends StatelessWidget {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      isVacant ? 'Tenant: Vacant' : 'Tenant: ${villa.tenantName}',
+                      isOccupied
+                          ? 'Tenant: ${villa.tenantName}'
+                          : 'Tenant: ${villa.status.displayName}',
                       maxLines: 1,
                       style: const TextStyle(
                         color: Color(0xFF596070),
@@ -1089,7 +1113,7 @@ class _VillaRow extends StatelessWidget {
             _StatusBadge(
               isPaid: isPaid,
               isPartial: isPartial,
-              isVacant: isVacant,
+              isVacant: !isOccupied,
             ),
             const SizedBox(width: 8),
             const Icon(
