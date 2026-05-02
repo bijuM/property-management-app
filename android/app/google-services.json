@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "938320861231",
+    "project_id": "investment-calculator-811fd",
+    "storage_bucket": "investment-calculator-811fd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:938320861231:android:cae1f34a4ccf3566e88eda",
+        "android_client_info": {
+          "package_name": "villa.management.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXUrquS_Aw-N3T76AVxVreWGtuSUkOKg4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

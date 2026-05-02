@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/income_repository.dart';
 import '../../domain/models/income.dart';
+import 'auth_provider.dart';
 import 'database_provider.dart';
+import 'sync_provider.dart';
 
 final incomeRepositoryProvider = Provider<IncomeRepository>((ref) {
   final database = ref.watch(databaseProvider);
@@ -17,7 +19,7 @@ final incomeListProvider = StreamProvider<List<Income>>((ref) {
 final incomeControllerProvider =
     StateNotifierProvider<IncomeController, AsyncValue<void>>((ref) {
   final repository = ref.watch(incomeRepositoryProvider);
-  return IncomeController(repository);
+  return IncomeController(repository, ref);
 });
 
 final totalIncomeForMonthProvider =
@@ -56,19 +58,36 @@ final incomeVillaSummaryProvider =
 
 class IncomeController extends StateNotifier<AsyncValue<void>> {
   final IncomeRepository _repository;
+  final Ref _ref;
 
-  IncomeController(this._repository) : super(const AsyncData(null));
+  IncomeController(this._repository, this._ref) : super(const AsyncData(null));
 
   Future<void> addIncome(Income income) async {
-    await _run(() => _repository.addIncome(income));
+    await _run(() async {
+      await _repository.addIncome(income);
+      await _queueIncomeSync(income);
+    });
   }
 
   Future<void> updateIncome(Income income) async {
-    await _run(() => _repository.updateIncome(income));
+    await _run(() async {
+      await _repository.updateIncome(income);
+      await _queueIncomeSync(income);
+    });
   }
 
   Future<void> deleteIncome(String id) async {
-    await _run(() => _repository.deleteIncome(id));
+    await _run(() async {
+      await _repository.deleteIncome(id);
+      final currentUser = _ref.read(authProvider).currentUser;
+      if (currentUser == null) return;
+      await _ref.read(firebaseSyncServiceProvider).queueDelete(
+            collection: 'incomes',
+            id: id,
+            userId: currentUser.id,
+          );
+      _ref.read(syncRefreshProvider.notifier).state++;
+    });
   }
 
   Future<double> getTotalIncomeForMonth(DateTime month) {
@@ -84,6 +103,17 @@ class IncomeController extends StateNotifier<AsyncValue<void>> {
       state = AsyncError(error, stackTrace);
       rethrow;
     }
+  }
+
+  Future<void> _queueIncomeSync(Income income) async {
+    final currentUser = _ref.read(authProvider).currentUser;
+    if (currentUser == null) return;
+
+    await _ref.read(firebaseSyncServiceProvider).queueIncome(
+          income: income,
+          userId: currentUser.id,
+        );
+    _ref.read(syncRefreshProvider.notifier).state++;
   }
 }
 

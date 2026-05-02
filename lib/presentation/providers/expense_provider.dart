@@ -6,7 +6,9 @@ import '../../domain/models/expense.dart';
 import '../../domain/models/expense_model.dart';
 import '../../domain/repositories/expense_repository.dart';
 import '../../domain/repositories/villa_repository.dart';
+import 'auth_provider.dart';
 import 'repository_provider.dart';
+import 'sync_provider.dart';
 
 final expenseProvider =
     StateNotifierProvider<ExpenseNotifier, List<Expense>>((ref) {
@@ -15,18 +17,22 @@ final expenseProvider =
   return ExpenseNotifier(
     expenseRepository: expenseRepository,
     villaRepository: villaRepository,
+    ref: ref,
   );
 });
 
 class ExpenseNotifier extends StateNotifier<List<Expense>> {
   final ExpenseRepository _expenseRepository;
   final VillaRepository _villaRepository;
+  final Ref _ref;
 
   ExpenseNotifier({
     required ExpenseRepository expenseRepository,
     required VillaRepository villaRepository,
+    required Ref ref,
   })  : _expenseRepository = expenseRepository,
         _villaRepository = villaRepository,
+        _ref = ref,
         super(const []) {
     loadExpenses();
   }
@@ -38,19 +44,31 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
   Future<void> addExpense(Expense expense) async {
     final id = expense.id.trim().isEmpty ? const Uuid().v4() : expense.id;
+    final syncedExpense = expense.copyWith(id: id);
     await _expenseRepository.addExpense(
-      _toExpenseModel(expense.copyWith(id: id)),
+      _toExpenseModel(syncedExpense),
     );
+    await _queueExpenseSync(syncedExpense);
     await loadExpenses();
   }
 
   Future<void> updateExpense(Expense expense) async {
     await _expenseRepository.updateExpense(_toExpenseModel(expense));
+    await _queueExpenseSync(expense);
     await loadExpenses();
   }
 
   Future<void> deleteExpense(String id) async {
     await _expenseRepository.deleteExpense(id);
+    final currentUser = _ref.read(authProvider).currentUser;
+    if (currentUser != null) {
+      await _ref.read(firebaseSyncServiceProvider).queueDelete(
+            collection: 'expenses',
+            id: id,
+            userId: currentUser.id,
+          );
+      _ref.read(syncRefreshProvider.notifier).state++;
+    }
     await loadExpenses();
   }
 
@@ -165,5 +183,16 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
   static String _normalize(String value) {
     return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  Future<void> _queueExpenseSync(Expense expense) async {
+    final currentUser = _ref.read(authProvider).currentUser;
+    if (currentUser == null) return;
+
+    await _ref.read(firebaseSyncServiceProvider).queueExpense(
+          expense: expense,
+          userId: currentUser.id,
+        );
+    _ref.read(syncRefreshProvider.notifier).state++;
   }
 }

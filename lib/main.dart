@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/constants/app_permissions.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/auth_provider.dart';
@@ -12,7 +13,10 @@ import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/villas_screen.dart';
 import 'presentation/providers/navigation_provider.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(
     const ProviderScope(
       child: MyApp(),

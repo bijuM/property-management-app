@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_permissions.dart';
 import '../../../core/constants/app_roles.dart';
 import '../../providers/auth_provider.dart';
+import 'sync_status_widget.dart';
 import 'users_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -93,6 +94,8 @@ class SettingsScreen extends ConsumerWidget {
             subtitle:
                 '${user == null ? 0 : AppRoles.permissionsForRole(user.role).length} enabled',
           ),
+          const SizedBox(height: 10),
+          const SyncStatusWidget(),
           if (authState.hasPermission(AppPermissions.manageUsers)) ...[
             const SizedBox(height: 10),
             _SettingsActionTile(
