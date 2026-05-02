@@ -11,8 +11,9 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(authProvider).currentUser;
-    final notifications = ref.watch(userNotificationsProvider);
-    final unreadCount = ref.watch(unreadNotificationCountProvider);
+    final notificationsAsync = ref.watch(userNotificationsProvider);
+    final unreadCount =
+        ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
     final controller = ref.watch(notificationControllerProvider);
 
     return Scaffold(
@@ -29,20 +30,35 @@ class NotificationsScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: currentUser == null || notifications.isEmpty
+      body: currentUser == null
           ? const _EmptyNotifications()
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: notifications.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final notification = notifications[index];
-                return NotificationCard(
-                  notification: notification,
-                  currentUserId: currentUser.id,
-                  onTap: () => controller.markAsRead(notification.id),
+          : notificationsAsync.when(
+              data: (notifications) {
+                final visibleNotifications = notifications
+                    .where(
+                        (item) => item.targetUserIds.contains(currentUser.id))
+                    .toList();
+
+                if (visibleNotifications.isEmpty) {
+                  return const _EmptyNotifications();
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: visibleNotifications.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final notification = visibleNotifications[index];
+                    return NotificationCard(
+                      notification: notification,
+                      currentUserId: currentUser.id,
+                      onTap: () => controller.markAsRead(notification.id),
+                    );
+                  },
                 );
               },
+              error: (error, _) => Center(child: Text(error.toString())),
+              loading: () => const Center(child: CircularProgressIndicator()),
             ),
     );
   }

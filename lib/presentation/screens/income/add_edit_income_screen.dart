@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../core/constants/app_permissions.dart';
+import '../../../domain/models/app_notification.dart';
 import '../../../domain/models/income.dart';
 import '../../../domain/models/villa_model.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/income_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/villa_provider.dart';
 
 class AddEditIncomeScreen extends ConsumerStatefulWidget {
@@ -296,10 +300,48 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
       await controller.updateIncome(income);
     } else {
       await controller.addIncome(income);
+      await _createIncomeAddedNotification(income);
     }
 
     if (!mounted) return;
     Navigator.pop(context);
+  }
+
+  Future<void> _createIncomeAddedNotification(Income income) async {
+    final authState = ref.read(authProvider);
+    final currentUser = authState.currentUser;
+    if (currentUser == null) return;
+    if (!authState.hasPermission(AppPermissions.manageIncome)) return;
+
+    final targetUserIds = authState.users
+        .where((user) => user.id != currentUser.id)
+        .map((user) => user.id)
+        .toList();
+
+    debugPrint('[Notifications] current user id=${currentUser.id}');
+    debugPrint('[Notifications] target user ids=$targetUserIds');
+
+    if (targetUserIds.isEmpty) return;
+
+    final notification = AppNotification(
+      id: const Uuid().v4(),
+      title: 'New income added',
+      body:
+          'QAR ${_moneyFormat.format(income.amount)} ${income.incomeType.toLowerCase()} added for ${income.villaName} by ${currentUser.username}',
+      type: NotificationTypes.incomeAdded,
+      createdByUserId: currentUser.id,
+      createdByUsername: currentUser.username,
+      targetUserIds: targetUserIds,
+      targetRole: null,
+      createdAt: DateTime.now(),
+      isReadMap: {
+        for (final userId in targetUserIds) userId: false,
+      },
+    );
+
+    await ref
+        .read(notificationControllerProvider)
+        .createNotification(notification);
   }
 
   void _showMessage(String message) {
@@ -317,6 +359,8 @@ class _AddEditIncomeScreenState extends ConsumerState<AddEditIncomeScreen> {
   static bool _isOccupiedVilla(VillaModel villa) {
     return villa.status.name.toLowerCase() == 'occupied';
   }
+
+  static final NumberFormat _moneyFormat = NumberFormat('#,##0.##');
 }
 
 class _DateField extends StatelessWidget {

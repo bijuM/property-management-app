@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/constants/app_permissions.dart';
+import '../../domain/models/app_notification.dart';
 import '../../domain/models/expense.dart';
 import '../../domain/models/villa_model.dart';
+import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/villa_provider.dart';
 
 class AddEditExpenseScreen extends ConsumerStatefulWidget {
@@ -267,10 +271,48 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
       await notifier.updateExpense(expense);
     } else {
       await notifier.addExpense(expense);
+      await _createExpenseAddedNotification(expense);
     }
 
     if (!mounted) return;
     Navigator.pop(context);
+  }
+
+  Future<void> _createExpenseAddedNotification(Expense expense) async {
+    final authState = ref.read(authProvider);
+    final currentUser = authState.currentUser;
+    if (currentUser == null) return;
+    if (!authState.hasPermission(AppPermissions.manageExpenses)) return;
+
+    final targetUserIds = authState.users
+        .where((user) => user.id != currentUser.id)
+        .map((user) => user.id)
+        .toList();
+
+    debugPrint('[Notifications] current user id=${currentUser.id}');
+    debugPrint('[Notifications] target user ids=$targetUserIds');
+
+    if (targetUserIds.isEmpty) return;
+
+    final notification = AppNotification(
+      id: const Uuid().v4(),
+      title: 'New expense added',
+      body:
+          'QAR ${_moneyFormat.format(expense.amount)} ${expense.category.toLowerCase()} expense added for ${expense.villaName} by ${currentUser.username}',
+      type: NotificationTypes.expenseAdded,
+      createdByUserId: currentUser.id,
+      createdByUsername: currentUser.username,
+      targetUserIds: targetUserIds,
+      targetRole: null,
+      createdAt: DateTime.now(),
+      isReadMap: {
+        for (final userId in targetUserIds) userId: false,
+      },
+    );
+
+    await ref
+        .read(notificationControllerProvider)
+        .createNotification(notification);
   }
 
   static String _villaLabel(VillaModel villa) {
@@ -278,6 +320,8 @@ class _AddEditExpenseScreenState extends ConsumerState<AddEditExpenseScreen> {
         villa.villaNumber.trim().isEmpty ? '' : ' #${villa.villaNumber}';
     return '${villa.villaName}$number';
   }
+
+  static final NumberFormat _moneyFormat = NumberFormat('#,##0.##');
 }
 
 class _FormPanel extends StatelessWidget {

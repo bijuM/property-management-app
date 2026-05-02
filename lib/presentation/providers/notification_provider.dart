@@ -1,24 +1,37 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/services/notification_service.dart';
 import '../../domain/models/app_notification.dart';
 import 'auth_provider.dart';
 
-final userNotificationsProvider = Provider<List<AppNotification>>((ref) {
-  final currentUser = ref.watch(authProvider).currentUser;
-  if (currentUser == null) return const [];
-
-  // Firestore-backed notification streaming will replace this placeholder in
-  // NotificationService. Push delivery to other devices requires a Firebase
-  // Cloud Function or backend using Firebase Admin SDK.
-  return const [];
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
 });
 
-final unreadNotificationCountProvider = Provider<int>((ref) {
+final userNotificationsProvider = StreamProvider<List<AppNotification>>((ref) {
   final currentUser = ref.watch(authProvider).currentUser;
-  if (currentUser == null) return 0;
+  if (currentUser == null) return const Stream.empty();
 
-  final notifications = ref.watch(userNotificationsProvider);
-  return notifications.where((item) => !item.isReadBy(currentUser.id)).length;
+  final service = ref.watch(notificationServiceProvider);
+
+  // Firestore version should use:
+  // FirebaseFirestore.instance
+  //   .collection('notifications')
+  //   .where('targetUserIds', arrayContains: currentUser.id)
+  //   .snapshots()
+  return service.watchNotificationsForUser(currentUser.id);
+});
+
+final unreadNotificationCountProvider = Provider<AsyncValue<int>>((ref) {
+  final currentUser = ref.watch(authProvider).currentUser;
+  if (currentUser == null) return const AsyncData(0);
+
+  final notificationsAsync = ref.watch(userNotificationsProvider);
+  return notificationsAsync.whenData((notifications) {
+    return notifications
+        .where((notification) => !notification.isReadBy(currentUser.id))
+        .length;
+  });
 });
 
 final notificationControllerProvider = Provider<NotificationController>((ref) {
@@ -30,15 +43,28 @@ class NotificationController {
 
   const NotificationController(this._ref);
 
+  Future<void> createNotification(AppNotification notification) async {
+    await _ref
+        .read(notificationServiceProvider)
+        .createNotification(notification);
+    _ref.invalidate(userNotificationsProvider);
+  }
+
   Future<void> markAsRead(String notificationId) async {
-    _ref.read(authProvider).currentUser;
-    // TODO: Update notifications/{notificationId}.isReadMap[userId] in
-    // Firestore when NotificationService is added.
+    final currentUser = _ref.read(authProvider).currentUser;
+    if (currentUser == null) return;
+
+    await _ref
+        .read(notificationServiceProvider)
+        .markAsRead(notificationId, currentUser.id);
+    _ref.invalidate(userNotificationsProvider);
   }
 
   Future<void> markAllAsRead() async {
-    _ref.read(authProvider).currentUser;
-    // TODO: Batch update visible notification documents in Firestore when
-    // NotificationService is added.
+    final currentUser = _ref.read(authProvider).currentUser;
+    if (currentUser == null) return;
+
+    await _ref.read(notificationServiceProvider).markAllAsRead(currentUser.id);
+    _ref.invalidate(userNotificationsProvider);
   }
 }
