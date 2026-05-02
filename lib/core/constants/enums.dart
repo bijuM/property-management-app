@@ -1,7 +1,6 @@
 enum VillaStatus {
   occupied,
   vacant,
-  maintenance,
 }
 
 enum IncomeType {
@@ -40,8 +39,6 @@ extension VillaStatusExt on VillaStatus {
         return 'Occupied';
       case VillaStatus.vacant:
         return 'Vacant';
-      case VillaStatus.maintenance:
-        return 'Maintenance';
     }
   }
 }

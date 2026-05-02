@@ -24,8 +24,6 @@ class VillaDetailScreen extends ConsumerWidget {
         return AppColors.success;
       case VillaStatus.vacant:
         return AppColors.warning;
-      case VillaStatus.maintenance:
-        return AppColors.error;
     }
   }
 

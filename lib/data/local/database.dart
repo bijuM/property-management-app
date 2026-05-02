@@ -18,7 +18,7 @@ class Villas extends Table {
   DateTimeColumn get contractStartDate => dateTime()();
   DateTimeColumn get contractEndDate => dateTime()();
   IntColumn get paymentDueDay => integer()();
-  TextColumn get status => text()(); // occupied, vacant, maintenance
+  TextColumn get status => text()(); // occupied, vacant
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 

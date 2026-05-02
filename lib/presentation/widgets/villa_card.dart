@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_styles.dart';
 import '../../core/constants/enums.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../domain/models/villa_model.dart';
@@ -23,8 +22,6 @@ class VillaCard extends StatelessWidget {
         return AppColors.success;
       case VillaStatus.vacant:
         return AppColors.warning;
-      case VillaStatus.maintenance:
-        return AppColors.error;
     }
   }
 
@@ -98,7 +95,9 @@ class VillaCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        villa.tenantName.isEmpty ? 'No tenant' : villa.tenantName,
+                        villa.tenantName.isEmpty
+                            ? 'No tenant'
+                            : villa.tenantName,
                         style: const TextStyle(
                           color: Color(0xFF646B7A),
                           fontSize: 11,
@@ -150,7 +149,8 @@ class VillaCard extends StatelessWidget {
                 ),
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(width: 30, height: 30),
+                constraints:
+                    const BoxConstraints.tightFor(width: 30, height: 30),
               ),
             ],
           ],

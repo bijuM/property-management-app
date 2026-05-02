@@ -70,6 +70,7 @@ class DashboardScreen extends ConsumerWidget {
                 (sum, value) => sum + value,
               );
               final occupiedVillas = villas.where(_isOccupiedVilla).toList();
+              final vacantVillas = villas.where(_isVacantVilla).toList();
               final occupiedVillaIds =
                   occupiedVillas.map((villa) => villa.id).toSet();
               final rentReceivedByVilla = Map<String, double>.fromEntries(
@@ -80,16 +81,16 @@ class DashboardScreen extends ConsumerWidget {
                   rentReceivedByVilla[villaId] = amount;
                 }
               });
-              final expectedRent = occupiedVillas.fold<double>(
-                0,
-                (sum, villa) => sum + villa.monthlyRent,
-              );
+              final expectedRent = _calculateMonthlyRentTotal(occupiedVillas);
+              final vacancyLoss = _calculateMonthlyRentTotal(vacantVillas);
               final rentReceived = rentReceivedByVilla.values.fold<double>(
                 0,
                 (sum, amount) => sum + amount,
               );
-              final pendingRent =
-                  math.max(expectedRent - rentReceived, 0).toDouble();
+              final pendingRent = _calculatePendingRent(
+                expectedRent: expectedRent,
+                rentReceived: rentReceived,
+              );
               final paidVillas = occupiedVillas
                   .where((villa) =>
                       (rentReceivedByVilla[villa.id] ?? 0) >=
@@ -118,6 +119,8 @@ class DashboardScreen extends ConsumerWidget {
                     pendingRent: pendingRent,
                     pendingVillas:
                         math.max(occupiedVillas.length - paidVillas, 0),
+                    vacancyLoss: vacancyLoss,
+                    vacantVillas: vacantVillas.length,
                   ),
                   const SizedBox(height: 14),
                   _QuickActions(
@@ -232,7 +235,26 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 bool _isOccupiedVilla(VillaModel villa) {
-  return villa.status.name.toLowerCase() == 'occupied';
+  return _hasVillaStatus(villa, 'occupied');
+}
+
+bool _isVacantVilla(VillaModel villa) {
+  return _hasVillaStatus(villa, 'vacant');
+}
+
+bool _hasVillaStatus(VillaModel villa, String status) {
+  return villa.status.name.toLowerCase() == status.toLowerCase();
+}
+
+double _calculateMonthlyRentTotal(Iterable<VillaModel> villas) {
+  return villas.fold<double>(0, (sum, villa) => sum + villa.monthlyRent);
+}
+
+double _calculatePendingRent({
+  required double expectedRent,
+  required double rentReceived,
+}) {
+  return math.max(expectedRent - rentReceived, 0).toDouble();
 }
 
 class _DashboardHeader extends StatelessWidget {
@@ -416,12 +438,16 @@ class _MetricGrid extends StatelessWidget {
   final double totalExpense;
   final double pendingRent;
   final int pendingVillas;
+  final double vacancyLoss;
+  final int vacantVillas;
 
   const _MetricGrid({
     required this.totalIncome,
     required this.totalExpense,
     required this.pendingRent,
     required this.pendingVillas,
+    required this.vacancyLoss,
+    required this.vacantVillas,
   });
 
   @override
@@ -434,7 +460,6 @@ class _MetricGrid extends StatelessWidget {
               child: _MetricCard(
                 title: 'Total Income',
                 value: DashboardScreen.money(totalIncome),
-                trend: '12% vs Apr 2026',
                 color: const Color(0xFF2EA043),
                 background: const Color(0xFFF1FCF3),
                 border: const Color(0xFFC8EFD0),
@@ -447,7 +472,6 @@ class _MetricGrid extends StatelessWidget {
               child: _MetricCard(
                 title: 'Total Expense',
                 value: DashboardScreen.money(totalExpense),
-                trend: '8% vs Apr 2026',
                 color: const Color(0xFFF04438),
                 background: const Color(0xFFFFF6F4),
                 border: const Color(0xFFFBD2CE),
@@ -464,7 +488,6 @@ class _MetricGrid extends StatelessWidget {
               child: _MetricCard(
                 title: 'Net Profit',
                 value: DashboardScreen.money(totalIncome - totalExpense),
-                trend: '15% vs Apr 2026',
                 color: const Color(0xFF2563EB),
                 background: const Color(0xFFF4F8FF),
                 border: const Color(0xFFD2E2FF),
@@ -488,6 +511,18 @@ class _MetricGrid extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        _MetricCard(
+          title: 'Vacancy Loss',
+          value: DashboardScreen.money(vacancyLoss),
+          trend: 'Vacant Villas: $vacantVillas',
+          color: const Color(0xFFEA580C),
+          background: const Color(0xFFFFF7ED),
+          border: const Color(0xFFFED7AA),
+          icon: Icons.home_work_outlined,
+          iconBackground: const Color(0xFFFFEDD5),
+          showTrendArrow: false,
+        ),
       ],
     );
   }
@@ -496,7 +531,7 @@ class _MetricGrid extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   final String title;
   final String value;
-  final String trend;
+  final String? trend;
   final Color color;
   final Color background;
   final Color border;
@@ -507,7 +542,7 @@ class _MetricCard extends StatelessWidget {
   const _MetricCard({
     required this.title,
     required this.value,
-    required this.trend,
+    this.trend,
     required this.color,
     required this.background,
     required this.border,
@@ -577,31 +612,33 @@ class _MetricCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 7),
-                    Row(
-                      children: [
-                        if (showTrendArrow)
-                          Icon(
-                            Icons.arrow_upward_rounded,
-                            color: color,
-                            size: 15,
-                          ),
-                        Flexible(
-                          child: Text(
-                            trend,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: showTrendArrow
-                                  ? const Color(0xFF596070)
-                                  : color,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
+                    if (trend != null) ...[
+                      const SizedBox(height: 7),
+                      Row(
+                        children: [
+                          if (showTrendArrow)
+                            Icon(
+                              Icons.arrow_upward_rounded,
+                              color: color,
+                              size: 15,
+                            ),
+                          Flexible(
+                            child: Text(
+                              trend!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: showTrendArrow
+                                    ? const Color(0xFF596070)
+                                    : color,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1021,107 +1058,116 @@ class _VillaRow extends StatelessWidget {
       },
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                height: 74,
-                width: 74,
-                child: CustomPaint(
-                  painter:
-                      _VillaThumbnailPainter(seed: villa.villaNumber.hashCode),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      villa.villaName.isEmpty
-                          ? 'Villa ${villa.villaNumber}'
-                          : villa.villaName,
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Color(0xFF060B26),
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final showThumbnail = constraints.maxWidth >= 430;
+
+            return Row(
+              children: [
+                if (showThumbnail) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      height: 74,
+                      width: 74,
+                      child: CustomPaint(
+                        painter: _VillaThumbnailPainter(
+                          seed: villa.villaNumber.hashCode,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      isOccupied
-                          ? 'Tenant: ${villa.tenantName}'
-                          : 'Tenant: ${villa.status.displayName}',
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Color(0xFF596070),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _VillaAmount(
-                          label: 'Rent',
-                          value: DashboardScreen.money(villa.monthlyRent),
-                          color: isPaid
-                              ? const Color(0xFF2EA043)
-                              : const Color(0xFF060B26),
-                        ),
-                      ),
-                      _SmallDivider(),
-                      Expanded(
-                        child: _VillaAmount(
-                          label: 'Received',
-                          value: DashboardScreen.money(received),
-                          color: received > 0
-                              ? const Color(0xFF2EA043)
-                              : const Color(0xFF596070),
-                        ),
-                      ),
-                      if (!isPaid) ...[
-                        _SmallDivider(),
-                        Expanded(
-                          child: _VillaAmount(
-                            label: 'Pending',
-                            value: DashboardScreen.money(pending),
-                            color: isPartial
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFFF04438),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          villa.villaName.isEmpty
+                              ? 'Villa ${villa.villaNumber}'
+                              : villa.villaName,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: Color(0xFF060B26),
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: 3),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          isOccupied
+                              ? 'Tenant: ${villa.tenantName}'
+                              : 'Tenant: ${villa.status.displayName}',
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: Color(0xFF596070),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _VillaAmount(
+                              label: 'Rent',
+                              value: DashboardScreen.money(villa.monthlyRent),
+                              color: isPaid
+                                  ? const Color(0xFF2EA043)
+                                  : const Color(0xFF060B26),
+                            ),
+                          ),
+                          _SmallDivider(),
+                          Expanded(
+                            child: _VillaAmount(
+                              label: 'Received',
+                              value: DashboardScreen.money(received),
+                              color: received > 0
+                                  ? const Color(0xFF2EA043)
+                                  : const Color(0xFF596070),
+                            ),
+                          ),
+                          if (!isPaid) ...[
+                            _SmallDivider(),
+                            Expanded(
+                              child: _VillaAmount(
+                                label: 'Pending',
+                                value: DashboardScreen.money(pending),
+                                color: isPartial
+                                    ? const Color(0xFFF59E0B)
+                                    : const Color(0xFFF04438),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            _StatusBadge(
-              isPaid: isPaid,
-              isPartial: isPartial,
-              isVacant: !isOccupied,
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF89909E),
-              size: 27,
-            ),
-          ],
+                ),
+                const SizedBox(width: 8),
+                _StatusBadge(
+                  isPaid: isPaid,
+                  isPartial: isPartial,
+                  isVacant: !isOccupied,
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF89909E),
+                  size: 27,
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -1146,9 +1192,11 @@ class _VillaAmount extends StatelessWidget {
       children: [
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            color: Color(0xFF656B7B),
-            fontSize: 12,
+            color: Color(0xFF89909E),
+            fontSize: 11,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1158,9 +1206,10 @@ class _VillaAmount extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(
             value,
+            maxLines: 1,
             style: TextStyle(
               color: color,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
           ),
