@@ -19,18 +19,17 @@ class IncomeCard extends StatelessWidget {
 
   static final NumberFormat _moneyFormat = NumberFormat('#,##0.00');
   static final DateFormat _dateFormat = DateFormat('dd MMM yyyy');
-  static final DateFormat _monthFormat = DateFormat('MMM yyyy');
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFCDEFD8)),
           boxShadow: [
             BoxShadow(
@@ -40,196 +39,109 @@ class IncomeCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 36,
-                  width: 36,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE4F8EA),
-                    shape: BoxShape.circle,
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE4F8EA),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.payments_rounded,
+                color: Color(0xFF12B76A),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    income.incomeType,
+                    style: const TextStyle(
+                      color: Color(0xFF060B26),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  child: const Icon(
-                    Icons.payments_rounded,
-                    color: Color(0xFF12B76A),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 4),
+                  Row(
                     children: [
                       Text(
-                        income.incomeType,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF060B26),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
                         income.villaName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Color(0xFF646B7A),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        ' • ',
+                        style: const TextStyle(
+                          color: Color(0xFF646B7A),
+                          fontSize: 11,
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _dateFormat.format(income.paymentDate),
+                          style: const TextStyle(
+                            color: Color(0xFF646B7A),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'QAR ${_moneyFormat.format(income.amount)}',
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Color(0xFF12B76A),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 6,
-              children: [
-                _MetaItem(
-                  icon: Icons.calendar_month_rounded,
-                  text: _dateFormat.format(income.paymentDate),
-                ),
-                _MetaItem(
-                  icon: Icons.credit_card_rounded,
-                  text: income.paymentMethod,
-                ),
-                _MetaItem(
-                  icon: Icons.event_available_rounded,
-                  text: _monthFormat.format(income.monthCovered),
-                ),
-              ],
-            ),
-            if (income.notes.trim().isNotEmpty) ...[
-              const SizedBox(height: 9),
-              Text(
-                income.notes,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF646B7A),
-                  fontSize: 12,
-                  height: 1.3,
-                ),
+                ],
               ),
-            ],
-            const Spacer(),
-            Row(
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _IncomeChip(label: income.incomeType),
-                const Spacer(),
-                if (onEdit != null)
-                  _TinyIconButton(
-                    tooltip: 'Edit income',
-                    icon: Icons.edit_outlined,
-                    color: const Color(0xFF039855),
-                    onPressed: onEdit!,
+                Text(
+                  'QAR ${_moneyFormat.format(income.amount)}',
+                  style: const TextStyle(
+                    color: Color(0xFF12B76A),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
-                if (onEdit != null && onDelete != null)
-                  const SizedBox(width: 4),
-                if (onDelete != null)
-                  _TinyIconButton(
-                    tooltip: 'Delete income',
-                    icon: Icons.delete_outline_rounded,
-                    color: const Color(0xFFF04438),
-                    onPressed: onDelete!,
-                  ),
+                  maxLines: 1,
+                ),
               ],
             ),
+            if (onDelete != null || onEdit != null) ...[
+              const SizedBox(width: 8),
+              if (onEdit != null)
+                _TinyIconButton(
+                  tooltip: 'Edit income',
+                  icon: Icons.edit_outlined,
+                  color: const Color(0xFF039855),
+                  onPressed: onEdit!,
+                ),
+              if (onEdit != null && onDelete != null)
+                const SizedBox(width: 4),
+              if (onDelete != null)
+                _TinyIconButton(
+                  tooltip: 'Delete income',
+                  icon: Icons.delete_outline_rounded,
+                  color: const Color(0xFFF04438),
+                  onPressed: onDelete!,
+                ),
+            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _IncomeChip extends StatelessWidget {
-  final String label;
-
-  const _IncomeChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEAFBF1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Color(0xFF039855),
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _MetaItem({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          color: const Color(0xFF8A91A1),
-          size: 14,
-        ),
-        const SizedBox(width: 4),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 145),
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF646B7A),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

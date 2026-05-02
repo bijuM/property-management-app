@@ -24,12 +24,12 @@ class ExpenseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFFF1D6CF)),
           boxShadow: [
             BoxShadow(
@@ -39,200 +39,111 @@ class ExpenseCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 36,
-                  width: 36,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFE6E0),
-                    shape: BoxShape.circle,
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFE6E0),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.receipt_long_rounded,
+                color: Color(0xFFF04438),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    expense.category,
+                    style: const TextStyle(
+                      color: Color(0xFF060B26),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  child: const Icon(
-                    Icons.receipt_long_rounded,
-                    color: Color(0xFFF04438),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 4),
+                  Row(
                     children: [
-                      Text(
-                        expense.category,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFF060B26),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
+                      Expanded(
+                        child: Text(
+                          expense.villaName.trim().isEmpty
+                              ? 'General Expense'
+                              : expense.villaName,
+                          style: const TextStyle(
+                            color: Color(0xFF646B7A),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(height: 3),
                       Text(
-                        expense.villaName.trim().isEmpty
-                            ? 'General Expense'
-                            : expense.villaName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        ' • ',
                         style: const TextStyle(
                           color: Color(0xFF646B7A),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
                         ),
+                      ),
+                      Text(
+                        _dateFormat.format(expense.expenseDate),
+                        style: const TextStyle(
+                          color: Color(0xFF646B7A),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'QAR ${_moneyFormat.format(expense.amount)}',
-                      maxLines: 1,
-                      style: const TextStyle(
-                        color: Color(0xFFF04438),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 10,
-              runSpacing: 6,
-              children: [
-                _MetaItem(
-                  icon: Icons.calendar_month_rounded,
-                  text: _dateFormat.format(expense.expenseDate),
-                ),
-                _MetaItem(
-                  icon: Icons.person_outline_rounded,
-                  text: expense.paidTo.trim().isEmpty
-                      ? 'Not specified'
-                      : expense.paidTo,
-                ),
-                _MetaItem(
-                  icon: Icons.payments_outlined,
-                  text: expense.paymentMethod,
-                ),
-              ],
-            ),
-            if (expense.notes.trim().isNotEmpty) ...[
-              const SizedBox(height: 9),
-              Text(
-                expense.notes,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF646B7A),
-                  fontSize: 12,
-                  height: 1.3,
-                ),
+                ],
               ),
-            ],
-            const Spacer(),
-            Row(
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _CategoryChip(label: expense.category),
-                const Spacer(),
-                if (onEdit != null)
-                  _TinyIconButton(
-                    tooltip: 'Edit expense',
-                    icon: Icons.edit_outlined,
-                    color: const Color(0xFFF79009),
-                    onPressed: onEdit!,
+                Text(
+                  'QAR ${_moneyFormat.format(expense.amount)}',
+                  style: const TextStyle(
+                    color: Color(0xFFF04438),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
                   ),
-                if (onEdit != null && onDelete != null)
-                  const SizedBox(width: 4),
-                if (onDelete != null)
-                  _TinyIconButton(
-                    tooltip: 'Delete expense',
-                    icon: Icons.delete_outline_rounded,
-                    color: const Color(0xFFF04438),
-                    onPressed: onDelete!,
-                  ),
+                  maxLines: 1,
+                ),
               ],
             ),
+            if (onDelete != null || onEdit != null) ...[
+              const SizedBox(width: 8),
+              if (onEdit != null)
+                _TinyIconButton(
+                  tooltip: 'Edit expense',
+                  icon: Icons.edit_outlined,
+                  color: const Color(0xFFF79009),
+                  onPressed: onEdit!,
+                ),
+              if (onEdit != null && onDelete != null)
+                const SizedBox(width: 4),
+              if (onDelete != null)
+                _TinyIconButton(
+                  tooltip: 'Delete expense',
+                  icon: Icons.delete_outline_rounded,
+                  color: const Color(0xFFF04438),
+                  onPressed: onDelete!,
+                ),
+            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _CategoryChip extends StatelessWidget {
-  final String label;
-
-  const _CategoryChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 150),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF1ED),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Color(0xFFF04438),
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _MetaItem({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          color: const Color(0xFF8A91A1),
-          size: 14,
-        ),
-        const SizedBox(width: 4),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 145),
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF646B7A),
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

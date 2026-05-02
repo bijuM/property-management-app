@@ -295,14 +295,17 @@ class _MonthFilter extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(
-                  child: Text(
-                    month,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF060B26),
-                      fontSize: 29,
-                      fontWeight: FontWeight.w900,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      month,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Color(0xFF060B26),
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
@@ -497,14 +500,17 @@ class _MetricCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 7),
@@ -659,16 +665,21 @@ class _ActionPill extends StatelessWidget {
         child: FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: color, size: 29),
               const SizedBox(width: 10),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFF060B26),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Color(0xFF060B26),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -972,27 +983,33 @@ class _VillaRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    villa.villaName.isEmpty
-                        ? 'Villa ${villa.villaNumber}'
-                        : villa.villaName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF060B26),
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      villa.villaName.isEmpty
+                          ? 'Villa ${villa.villaNumber}'
+                          : villa.villaName,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Color(0xFF060B26),
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    isVacant ? 'Tenant: Vacant' : 'Tenant: ${villa.tenantName}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF596070),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      isVacant ? 'Tenant: Vacant' : 'Tenant: ${villa.tenantName}',
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: Color(0xFF596070),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1283,14 +1300,17 @@ class _ExpenseChip extends StatelessWidget {
           child: Icon(icon, color: color, size: 24),
         ),
         const SizedBox(height: 8),
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xFF596070),
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Text(
+            title,
+            maxLines: 1,
+            style: const TextStyle(
+              color: Color(0xFF596070),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         const SizedBox(height: 4),

@@ -33,7 +33,7 @@ class VillaCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -47,118 +47,99 @@ class VillaCard extends StatelessWidget {
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Villa Info
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.home_outlined,
-                        size: 16,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          villa.villaName,
-                          style: AppStyles.titleMedium.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Villa # ${villa.villaNumber}',
-                    style: AppStyles.labelSmall.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.home_outlined,
+                color: AppColors.primary,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 8),
-
-            // Location
+            const SizedBox(width: 12),
             Expanded(
-              flex: 2,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Location',
-                    style: AppStyles.labelSmall.copyWith(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        size: 13,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          villa.location,
-                          style: AppStyles.bodySmall.copyWith(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // Tenant
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Tenant',
-                    style: AppStyles.labelSmall.copyWith(
-                      fontSize: 10,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    villa.tenantName.isEmpty ? '—' : villa.tenantName,
-                    style: AppStyles.bodySmall.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
+                    villa.villaName,
+                    style: const TextStyle(
+                      color: Color(0xFF060B26),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          villa.location,
+                          style: const TextStyle(
+                            color: Color(0xFF646B7A),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        ' • ',
+                        style: const TextStyle(
+                          color: Color(0xFF646B7A),
+                          fontSize: 11,
+                        ),
+                      ),
+                      Text(
+                        villa.tenantName.isEmpty ? 'No tenant' : villa.tenantName,
+                        style: const TextStyle(
+                          color: Color(0xFF646B7A),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _getStatusColor(villa.status).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Text(
+                villa.status.displayName,
+                style: TextStyle(
+                  color: _getStatusColor(villa.status),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              CurrencyFormatter.format(villa.monthlyRent),
+              style: const TextStyle(
+                color: AppColors.success,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+              maxLines: 1,
+            ),
             if (onDelete != null) ...[
+              const SizedBox(width: 8),
               IconButton(
                 tooltip: 'Delete villa',
                 onPressed: onDelete,
@@ -167,48 +148,11 @@ class VillaCard extends StatelessWidget {
                   color: AppColors.error,
                   size: 20,
                 ),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 30, height: 30),
               ),
             ],
-
-            // Monthly Rent + Status
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(villa.status).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    child: Text(
-                      villa.status.displayName,
-                      style: AppStyles.labelSmall.copyWith(
-                        color: _getStatusColor(villa.status),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    CurrencyFormatter.format(villa.monthlyRent),
-                    style: AppStyles.titleSmall.copyWith(
-                      color: AppColors.success,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
