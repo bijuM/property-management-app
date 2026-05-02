@@ -1318,17 +1318,12 @@ class _TopExpenses extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final total =
-        expensesByCategory.values.fold<double>(0, (sum, value) => sum + value);
-    final entries = expensesByCategory.entries.toList()
+    final entries = expensesByCategory.entries
+        .where((entry) => entry.key.trim().isNotEmpty && entry.value > 0)
+        .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     final items = entries.take(4).toList();
-
-    while (items.length < 4) {
-      final defaults = ['maintenance', 'electricity', 'cleaning', 'other'];
-      final name = defaults[items.length];
-      items.add(MapEntry(name, 0));
-    }
+    final total = items.fold<double>(0, (sum, entry) => sum + entry.value);
 
     return _RaisedPanel(
       padding: const EdgeInsets.fromLTRB(14, 15, 14, 16),
@@ -1357,36 +1352,50 @@ class _TopExpenses extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 22),
-          Row(
-            children: List.generate(items.length, (index) {
-              final entry = items[index];
-              final config = _ExpenseVisual.forName(entry.key);
-              final percentage = total == 0 ? 0.0 : (entry.value / total) * 100;
-
-              return Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _ExpenseChip(
-                        title: config.title,
-                        amount: entry.value,
-                        percent: percentage,
-                        icon: config.icon,
-                        color: config.color,
-                        background: config.background,
-                      ),
-                    ),
-                    if (index != items.length - 1)
-                      Container(
-                        height: 48,
-                        width: 1,
-                        color: const Color(0xFFD8DCE5),
-                      ),
-                  ],
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'No expenses recorded this month.',
+                style: TextStyle(
+                  color: Color(0xFF596070),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
                 ),
-              );
-            }),
-          ),
+              ),
+            )
+          else
+            Row(
+              children: List.generate(items.length, (index) {
+                final entry = items[index];
+                final config = _ExpenseVisual.forName(entry.key);
+                final percentage =
+                    total == 0 ? 0.0 : (entry.value / total) * 100;
+
+                return Expanded(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _ExpenseChip(
+                          title: config.title,
+                          amount: entry.value,
+                          percent: percentage,
+                          icon: config.icon,
+                          color: config.color,
+                          background: config.background,
+                        ),
+                      ),
+                      if (index != items.length - 1)
+                        Container(
+                          height: 48,
+                          width: 1,
+                          color: const Color(0xFFD8DCE5),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+            ),
         ],
       ),
     );
