@@ -159,77 +159,31 @@ class _VillasScreenState extends ConsumerState<VillasScreen> {
                   else
                     Column(
                       children: List.generate(
-                        (filteredVillas.length / 2).ceil(),
-                        (rowIndex) {
-                          final startIndex = rowIndex * 2;
-                          final endIndex =
-                              (startIndex + 2 > filteredVillas.length)
-                                  ? filteredVillas.length
-                                  : startIndex + 2;
+                        filteredVillas.length,
+                        (index) {
+                          final villa = filteredVillas[index];
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: Row(
-                              children: [
-                                // First Villa Card
-                                Expanded(
-                                  child: VillaCard(
-                                    villa: filteredVillas[startIndex],
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              VillaDetailScreen(
-                                            villaId:
-                                                filteredVillas[startIndex].id,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    onDelete: canDeleteVillas
-                                        ? () {
-                                            _showDeleteConfirmation(
-                                              context,
-                                              filteredVillas[startIndex].id,
-                                            );
-                                          }
-                                        : null,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-
-                                // Second Villa Card (if exists)
-                                if (endIndex > startIndex + 1)
-                                  Expanded(
-                                    child: VillaCard(
-                                      villa: filteredVillas[startIndex + 1],
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                VillaDetailScreen(
-                                              villaId:
-                                                  filteredVillas[startIndex + 1]
-                                                      .id,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      onDelete: canDeleteVillas
-                                          ? () {
-                                              _showDeleteConfirmation(
-                                                context,
-                                                filteredVillas[startIndex + 1]
-                                                    .id,
-                                              );
-                                            }
-                                          : null,
+                            child: VillaCard(
+                              villa: villa,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => VillaDetailScreen(
+                                      villaId: villa.id,
                                     ),
-                                  )
-                                else
-                                  // Empty space if odd number
-                                  Expanded(child: SizedBox.shrink()),
-                              ],
+                                  ),
+                                );
+                              },
+                              onDelete: canDeleteVillas
+                                  ? () {
+                                      _showDeleteConfirmation(
+                                        context,
+                                        villa.id,
+                                      );
+                                    }
+                                  : null,
                             ),
                           );
                         },

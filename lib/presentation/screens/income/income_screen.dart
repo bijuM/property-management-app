@@ -160,7 +160,7 @@ class _IncomeScreenState extends ConsumerState<IncomeScreen> {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        mainAxisExtent: 184,
+                        mainAxisExtent: 76,
                       ),
                       itemBuilder: (context, index) {
                         final income = filteredIncomes[index];
