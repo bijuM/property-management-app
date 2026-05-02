@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -60,52 +61,87 @@ class AuthNotifier extends StateNotifier<AuthState> {
   static const loggedInUserIdKey = 'villabooks_logged_in_user_id';
 
   Future<bool> login(String username, String password) async {
-    final normalizedUsername = username.trim().toLowerCase();
-    final users =
-        state.users.isEmpty ? await _loadUsersFromPrefs() : state.users;
-    final matchedUser = users.where((user) {
-      return user.username.toLowerCase() == normalizedUsername &&
-          user.password == password;
-    }).firstOrNull;
+    try {
+      final normalizedUsername = username.trim().toLowerCase();
+      final users =
+          state.users.isEmpty ? await _loadUsersFromPrefs() : state.users;
+      final matchedUser = users.where((user) {
+        return user.username.toLowerCase() == normalizedUsername &&
+            user.password == password;
+      }).firstOrNull;
 
-    if (matchedUser == null) {
+      if (matchedUser == null) {
+        state = AuthState.ready(
+          users: users,
+          errorMessage: 'Invalid username or password',
+        );
+        return false;
+      }
+
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString(loggedInUserIdKey, matchedUser.id);
+      state = AuthState.ready(users: users, currentUser: matchedUser);
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Login failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       state = AuthState.ready(
-        users: users,
-        errorMessage: 'Invalid username or password',
+        users: state.users,
+        errorMessage: 'Unable to log in. Please restart the app and try again.',
       );
       return false;
     }
-
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(loggedInUserIdKey, matchedUser.id);
-    state = AuthState.ready(users: users, currentUser: matchedUser);
-    return true;
   }
 
   Future<void> logout() async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(loggedInUserIdKey);
-    state = AuthState.ready(users: state.users);
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.remove(loggedInUserIdKey);
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Logout persistence failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      state = AuthState.ready(users: state.users);
+    }
   }
 
   Future<void> loadSession() async {
-    final users = await loadUsers();
-    final preferences = await SharedPreferences.getInstance();
-    final loggedInUserId = preferences.getString(loggedInUserIdKey);
-    final currentUser = loggedInUserId == null
-        ? null
-        : users.where((user) => user.id == loggedInUserId).firstOrNull;
+    try {
+      debugPrint('[Auth] Loading saved session.');
+      final users = await loadUsers();
+      final preferences = await SharedPreferences.getInstance();
+      final loggedInUserId = preferences.getString(loggedInUserIdKey);
+      final currentUser = loggedInUserId == null
+          ? null
+          : users.where((user) => user.id == loggedInUserId).firstOrNull;
 
-    state = AuthState.ready(users: users, currentUser: currentUser);
+      debugPrint(
+        '[Auth] Session loaded. users=${users.length}, loggedIn=${currentUser != null}',
+      );
+      state = AuthState.ready(users: users, currentUser: currentUser);
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Failed to load session: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      state = AuthState.ready(
+        users: [_defaultAdminUser()],
+        errorMessage: 'Local session could not be loaded.',
+      );
+    }
   }
 
   Future<List<AppUser>> loadUsers() async {
-    var users = await _loadUsersFromPrefs();
-    if (users.isEmpty) {
-      users = [_defaultAdminUser()];
-      await _saveUsers(users);
+    try {
+      var users = await _loadUsersFromPrefs();
+      if (users.isEmpty) {
+        users = [_defaultAdminUser()];
+        await _saveUsers(users);
+      }
+      return users;
+    } catch (error, stackTrace) {
+      debugPrint('[Auth] Failed to load users: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return [_defaultAdminUser()];
     }
-    return users;
   }
 
   Future<void> addUser(AppUser user) async {

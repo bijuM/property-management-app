@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
@@ -209,8 +210,25 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'villabooks.db'));
-    return NativeDatabase(file);
+    try {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      final file = File(p.join(dbFolder.path, 'villabooks.db'));
+      debugPrint('[Database] Opening local database at ${file.path}');
+      return NativeDatabase(file);
+    } catch (error, stackTrace) {
+      debugPrint('[Database] Failed to open documents database: $error');
+      debugPrintStack(stackTrace: stackTrace);
+
+      try {
+        final fallbackFolder = await getTemporaryDirectory();
+        final file = File(p.join(fallbackFolder.path, 'villabooks.db'));
+        debugPrint('[Database] Opening fallback database at ${file.path}');
+        return NativeDatabase(file);
+      } catch (fallbackError, fallbackStackTrace) {
+        debugPrint('[Database] Failed to open fallback database: $fallbackError');
+        debugPrintStack(stackTrace: fallbackStackTrace);
+        rethrow;
+      }
+    }
   });
 }

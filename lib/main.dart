@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_permissions.dart';
+import 'core/startup/startup_status.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/screens/dashboard_screen.dart';
@@ -16,15 +17,42 @@ import 'presentation/providers/navigation_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  final startupStatus = await _initializeStartup();
 
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      overrides: [
+        startupStatusProvider.overrideWithValue(startupStatus),
+      ],
+      child: const MyApp(),
     ),
   );
+}
+
+Future<StartupStatus> _initializeStartup() async {
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('[Startup] Flutter error: ${details.exceptionAsString()}');
+    debugPrintStack(stackTrace: details.stack);
+  };
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint('[Startup] Firebase initialized successfully.');
+    return const StartupStatus(firebaseInitialized: true);
+  } catch (error, stackTrace) {
+    debugPrint('[Startup] Firebase initialization failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    debugPrint(
+      '[Startup] Continuing in offline/local mode. Cloud sync and FCM will be disabled until Firebase initializes.',
+    );
+    return StartupStatus(
+      firebaseInitialized: false,
+      firebaseError: error.toString(),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {

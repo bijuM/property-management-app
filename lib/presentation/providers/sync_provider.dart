@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/startup/startup_status.dart';
 import '../../data/services/connectivity_service.dart';
 import '../../data/services/firebase_sync_service.dart';
 import 'expense_provider.dart';
@@ -19,8 +20,10 @@ final isOnlineProvider = StreamProvider<bool>((ref) {
 });
 
 final firebaseSyncServiceProvider = Provider<FirebaseSyncService>((ref) {
+  final startupStatus = ref.watch(startupStatusProvider);
   final service = FirebaseSyncService(
     connectivityService: ref.watch(connectivityServiceProvider),
+    firebaseEnabled: startupStatus.firebaseInitialized,
   );
   service.startAutoSync();
   ref.onDispose(service.dispose);

@@ -3,7 +3,12 @@ import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
+    show
+        TargetPlatform,
+        debugPrint,
+        debugPrintStack,
+        defaultTargetPlatform,
+        kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/enums.dart';
@@ -18,14 +23,16 @@ class FirebaseSyncService {
   static const _pendingSyncKey = 'villabooks_pending_sync_queue';
   static const _lastSyncedAtKey = 'villabooks_last_synced_at';
 
-  final FirebaseFirestore _firestore;
+  FirebaseFirestore? _firestore;
   final ConnectivityService _connectivityService;
+  final bool firebaseEnabled;
   StreamSubscription<bool>? _connectivitySubscription;
 
   FirebaseSyncService({
     FirebaseFirestore? firestore,
     ConnectivityService? connectivityService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+    this.firebaseEnabled = true,
+  })  : _firestore = firestore,
         _connectivityService = connectivityService ?? ConnectivityService();
 
   void startAutoSync() {
@@ -141,7 +148,8 @@ class FirebaseSyncService {
   Future<void> syncPendingNotifications() => _syncCollection('notifications');
 
   Future<void> syncAllPendingData() async {
-    if (!_isFirestoreEnabled) return;
+    final firestore = _safeFirestore;
+    if (firestore == null) return;
     if (!await _connectivityService.isOnline) return;
 
     await syncPendingVillas();
@@ -158,12 +166,13 @@ class FirebaseSyncService {
   }
 
   Stream<List<VillaModel>> watchCloudVillas() {
-    if (!_isFirestoreEnabled) {
+    final firestore = _safeFirestore;
+    if (firestore == null) {
       debugPrint('[FirebaseSync] cloud villa stream disabled on desktop.');
       return Stream.value(const []);
     }
 
-    return _firestore.collection('villas').snapshots().map((snapshot) {
+    return firestore.collection('villas').snapshots().map((snapshot) {
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
@@ -175,12 +184,13 @@ class FirebaseSyncService {
   }
 
   Stream<List<Income>> watchCloudIncomes() {
-    if (!_isFirestoreEnabled) {
+    final firestore = _safeFirestore;
+    if (firestore == null) {
       debugPrint('[FirebaseSync] cloud income stream disabled on desktop.');
       return Stream.value(const []);
     }
 
-    return _firestore.collection('incomes').snapshots().map((snapshot) {
+    return firestore.collection('incomes').snapshots().map((snapshot) {
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
@@ -192,12 +202,13 @@ class FirebaseSyncService {
   }
 
   Stream<List<Expense>> watchCloudExpenses() {
-    if (!_isFirestoreEnabled) {
+    final firestore = _safeFirestore;
+    if (firestore == null) {
       debugPrint('[FirebaseSync] cloud expense stream disabled on desktop.');
       return Stream.value(const []);
     }
 
-    return _firestore.collection('expenses').snapshots().map((snapshot) {
+    return firestore.collection('expenses').snapshots().map((snapshot) {
       final activeDocs = snapshot.docs
           .where((doc) => doc.data()['isDeleted'] != true)
           .toList();
@@ -275,7 +286,8 @@ class FirebaseSyncService {
   }
 
   Future<void> _syncCollection(String collection) async {
-    if (!_isFirestoreEnabled) return;
+    final firestore = _safeFirestore;
+    if (firestore == null) return;
     if (!await _connectivityService.isOnline) return;
 
     final queue = await _loadQueue();
@@ -294,7 +306,7 @@ class FirebaseSyncService {
           'syncStatus': 'synced',
           'lastSyncedAt': now.toIso8601String(),
         };
-        await _firestore
+        await firestore
             .collection(record.collection)
             .doc(record.id)
             .set(payload, SetOptions(merge: true));
@@ -444,7 +456,26 @@ class FirebaseSyncService {
     return DateTime.now();
   }
 
+  FirebaseFirestore? get _safeFirestore {
+    if (!_isFirestoreEnabled) return null;
+
+    try {
+      return _firestore ??= FirebaseFirestore.instance;
+    } catch (error, stackTrace) {
+      debugPrint('[FirebaseSync] Firestore unavailable: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      return null;
+    }
+  }
+
   bool get _isFirestoreEnabled {
+    if (!firebaseEnabled) {
+      debugPrint(
+        '[FirebaseSync] Firestore sync disabled because Firebase did not initialize.',
+      );
+      return false;
+    }
+
     if (kIsWeb) return true;
 
     switch (defaultTargetPlatform) {
