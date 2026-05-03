@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-ios:
-    name: iOS signed IPA
+    name: iOS unsigned build
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,108 +20,23 @@ jobs:
       - run: pod repo update
         working-directory: ios
 
-      - name: Install Apple signing assets
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          set -euo pipefail
+      - run: flutter build ios --release --no-codesign
 
-          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
-          PROVISION_PROFILE_PATH="$RUNNER_TEMP/build.mobileprovision"
-          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+      - run: mkdir Payload
+        working-directory: build/ios/iphoneos
 
-          MISSING_SECRETS=()
-          [ -z "$BUILD_CERTIFICATE_BASE64" ] && MISSING_SECRETS+=("BUILD_CERTIFICATE_BASE64")
-          [ -z "$BUILD_PROVISION_PROFILE_BASE64" ] && MISSING_SECRETS+=("BUILD_PROVISION_PROFILE_BASE64")
-          [ -z "$P12_PASSWORD" ] && MISSING_SECRETS+=("P12_PASSWORD")
-          [ -z "$KEYCHAIN_PASSWORD" ] && MISSING_SECRETS+=("KEYCHAIN_PASSWORD")
+      - run: mv Runner.app/ Payload
+        working-directory: build/ios/iphoneos
 
-          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
-            echo "Apple signing secrets are missing: ${MISSING_SECRETS[*]}"
-            echo "Add them in GitHub repository Settings > Secrets and variables > Actions > Repository secrets."
-            exit 1
-          fi
+      - name: Zip output
+        run: zip -qq -r -9 FlutterIpaExport.ipa Payload
+        working-directory: build/ios/iphoneos
 
-          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
-          printf '%s' "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROVISION_PROFILE_PATH"
-
-          if ! openssl pkcs12 -in "$CERTIFICATE_PATH" -nokeys -passin pass:"$P12_PASSWORD" >/dev/null 2>&1; then
-            echo "BUILD_CERTIFICATE_BASE64 did not decode to a valid password-protected .p12 certificate."
-            echo "Export an Apple Distribution certificate from Keychain Access as .p12, including the private key, then base64 that file."
-            exit 1
-          fi
-
-          if ! security cms -D -i "$PROVISION_PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"; then
-            echo "BUILD_PROVISION_PROFILE_BASE64 did not decode to a valid .mobileprovision file."
-            exit 1
-          fi
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH"
-
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$RUNNER_TEMP/profile.plist")
-          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" "$RUNNER_TEMP/profile.plist")
-          DEVELOPMENT_TEAM=$(/usr/libexec/PlistBuddy -c "Print TeamIdentifier:0" "$RUNNER_TEMP/profile.plist")
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          cp "$PROVISION_PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
-          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
-          echo "DEVELOPMENT_TEAM=$DEVELOPMENT_TEAM" >> "$GITHUB_ENV"
-
-      - name: Create export options
-        env:
-          IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
-        run: |
-          cat > ios/ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>$IOS_EXPORT_METHOD</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>teamID</key>
-            <string>$DEVELOPMENT_TEAM</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.example.villabooks</key>
-              <string>$PROFILE_NAME</string>
-            </dict>
-          </dict>
-          </plist>
-          EOF
-
-      - name: Build signed IPA
-        env:
-          IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY || 'Apple Distribution' }}
-        run: |
-          flutter build ios --release --config-only
-          xcodebuild archive \
-            -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-            CODE_SIGN_IDENTITY="$IOS_CODE_SIGN_IDENTITY"
-          xcodebuild -exportArchive \
-            -archivePath build/ios/archive/Runner.xcarchive \
-            -exportOptionsPlist ios/ExportOptions.plist \
-            -exportPath build/ios/ipa
-
-      - name: Upload IPA to release
+      - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/ios/ipa/*.ipa
-          file_glob: true
+          file: build/ios/iphoneos/FlutterIpaExport.ipa
           tag: v1.0
           overwrite: true
           body: "This is first release"
