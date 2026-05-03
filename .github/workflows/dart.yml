@@ -27,12 +27,30 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
+          set -euo pipefail
+
           CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
           PROVISION_PROFILE_PATH="$RUNNER_TEMP/build.mobileprovision"
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
 
-          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
-          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROVISION_PROFILE_PATH"
+          if [ -z "$BUILD_CERTIFICATE_BASE64" ] || [ -z "$BUILD_PROVISION_PROFILE_BASE64" ]; then
+            echo "Apple signing secrets are missing. Set BUILD_CERTIFICATE_BASE64 and BUILD_PROVISION_PROFILE_BASE64."
+            exit 1
+          fi
+
+          printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          printf '%s' "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROVISION_PROFILE_PATH"
+
+          if ! openssl pkcs12 -in "$CERTIFICATE_PATH" -nokeys -passin pass:"$P12_PASSWORD" >/dev/null 2>&1; then
+            echo "BUILD_CERTIFICATE_BASE64 did not decode to a valid password-protected .p12 certificate."
+            echo "Export an Apple Distribution certificate from Keychain Access as .p12, including the private key, then base64 that file."
+            exit 1
+          fi
+
+          if ! security cms -D -i "$PROVISION_PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"; then
+            echo "BUILD_PROVISION_PROFILE_BASE64 did not decode to a valid .mobileprovision file."
+            exit 1
+          fi
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
@@ -40,7 +58,6 @@ jobs:
           security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
-          security cms -D -i "$PROVISION_PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$RUNNER_TEMP/profile.plist")
           PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" "$RUNNER_TEMP/profile.plist")
           DEVELOPMENT_TEAM=$(/usr/libexec/PlistBuddy -c "Print TeamIdentifier:0" "$RUNNER_TEMP/profile.plist")
