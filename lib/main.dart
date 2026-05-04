@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -16,17 +18,22 @@ import 'presentation/screens/villas_screen.dart';
 import 'presentation/providers/navigation_provider.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final startupStatus = await _initializeStartup();
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    final startupStatus = await _initializeStartup();
 
-  runApp(
-    ProviderScope(
-      overrides: [
-        startupStatusProvider.overrideWithValue(startupStatus),
-      ],
-      child: const MyApp(),
-    ),
-  );
+    runApp(
+      ProviderScope(
+        overrides: [
+          startupStatusProvider.overrideWithValue(startupStatus),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  }, (error, stackTrace) {
+    debugPrint('[Startup] Unhandled async error: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  });
 }
 
 Future<StartupStatus> _initializeStartup() async {

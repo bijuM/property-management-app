@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
     show
         TargetPlatform,
@@ -9,6 +10,7 @@ import 'package:flutter/foundation.dart'
         debugPrintStack,
         defaultTargetPlatform,
         kIsWeb;
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/enums.dart';
@@ -36,6 +38,11 @@ class FirebaseSyncService {
         _connectivityService = connectivityService ?? ConnectivityService();
 
   void startAutoSync() {
+    debugPrint(
+      '[FirebaseSync] startAutoSync platform=$defaultTargetPlatform, '
+      'firebaseEnabled=$firebaseEnabled, firestoreEnabled=$_isFirestoreEnabled',
+    );
+
     if (!_isFirestoreEnabled) {
       debugPrint(
         '[FirebaseSync] Firestore sync disabled on $defaultTargetPlatform. '
@@ -47,9 +54,14 @@ class FirebaseSyncService {
     _connectivitySubscription ??=
         _connectivityService.onlineStatus.listen((isOnline) {
       if (isOnline) {
-        unawaited(syncAllPendingData());
+        _syncAllPendingDataInBackground('connectivity-change');
       }
+    }, onError: (Object error, StackTrace stackTrace) {
+      debugPrint('[FirebaseSync] connectivity listener failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
     });
+
+    _syncAllPendingDataInBackground('startup');
   }
 
   void dispose() {
@@ -148,9 +160,17 @@ class FirebaseSyncService {
   Future<void> syncPendingNotifications() => _syncCollection('notifications');
 
   Future<void> syncAllPendingData() async {
-    final firestore = _safeFirestore;
-    if (firestore == null) return;
-    if (!await _connectivityService.isOnline) return;
+    if (!_isFirestoreEnabled) {
+      debugPrint('[FirebaseSync] sync skipped: Firestore sync is disabled.');
+      return;
+    }
+    if (!await _connectivityService.isOnline) {
+      debugPrint('[FirebaseSync] sync skipped: device is offline.');
+      return;
+    }
+
+    final pendingCount = await getPendingSyncCount();
+    debugPrint('[FirebaseSync] syncAllPendingData pending=$pendingCount');
 
     await syncPendingVillas();
     await syncPendingIncomes();
@@ -165,7 +185,22 @@ class FirebaseSyncService {
     );
   }
 
+  void _syncAllPendingDataInBackground(String reason) {
+    unawaited(
+      syncAllPendingData().catchError((Object error, StackTrace stackTrace) {
+        debugPrint('[FirebaseSync] background sync failed ($reason): $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }),
+    );
+  }
+
   Stream<List<VillaModel>> watchCloudVillas() {
+    if (_usesRestSync) {
+      debugPrint(
+          '[FirebaseSync] cloud villa stream disabled on Windows REST sync.');
+      return Stream.value(const []);
+    }
+
     final firestore = _safeFirestore;
     if (firestore == null) {
       debugPrint('[FirebaseSync] cloud villa stream disabled on desktop.');
@@ -184,6 +219,12 @@ class FirebaseSyncService {
   }
 
   Stream<List<Income>> watchCloudIncomes() {
+    if (_usesRestSync) {
+      debugPrint(
+          '[FirebaseSync] cloud income stream disabled on Windows REST sync.');
+      return Stream.value(const []);
+    }
+
     final firestore = _safeFirestore;
     if (firestore == null) {
       debugPrint('[FirebaseSync] cloud income stream disabled on desktop.');
@@ -202,6 +243,12 @@ class FirebaseSyncService {
   }
 
   Stream<List<Expense>> watchCloudExpenses() {
+    if (_usesRestSync) {
+      debugPrint(
+          '[FirebaseSync] cloud expense stream disabled on Windows REST sync.');
+      return Stream.value(const []);
+    }
+
     final firestore = _safeFirestore;
     if (firestore == null) {
       debugPrint('[FirebaseSync] cloud expense stream disabled on desktop.');
@@ -278,19 +325,39 @@ class FirebaseSyncService {
     );
     queue.add(record);
     await _saveQueue(queue);
-    debugPrint('[FirebaseSync] queued $collection/$id');
+    debugPrint(
+      '[FirebaseSync] queued $collection/$id, queueSize=${queue.length}',
+    );
 
     if (await _connectivityService.isOnline) {
       await _syncCollection(collection);
+    } else {
+      debugPrint('[FirebaseSync] queued $collection/$id for later: offline');
     }
   }
 
   Future<void> _syncCollection(String collection) async {
+    if (_usesRestSync) {
+      await _syncCollectionWithRest(collection);
+      return;
+    }
+
     final firestore = _safeFirestore;
-    if (firestore == null) return;
-    if (!await _connectivityService.isOnline) return;
+    if (firestore == null) {
+      debugPrint('[FirebaseSync] $collection sync skipped: no Firestore.');
+      return;
+    }
+    if (!await _connectivityService.isOnline) {
+      debugPrint('[FirebaseSync] $collection sync skipped: offline.');
+      return;
+    }
 
     final queue = await _loadQueue();
+    final collectionQueue =
+        queue.where((record) => record.collection == collection).length;
+    debugPrint(
+      '[FirebaseSync] syncing $collection queued=$collectionQueue total=${queue.length}',
+    );
     final remaining = <_SyncRecord>[];
 
     for (final record in queue) {
@@ -322,6 +389,108 @@ class FirebaseSyncService {
     }
 
     await _saveQueue(remaining);
+  }
+
+  Future<void> _syncCollectionWithRest(String collection) async {
+    if (!await _connectivityService.isOnline) {
+      debugPrint('[FirebaseSync] $collection REST sync skipped: offline.');
+      return;
+    }
+
+    final queue = await _loadQueue();
+    final collectionQueue =
+        queue.where((record) => record.collection == collection).length;
+    debugPrint(
+      '[FirebaseSync] REST syncing $collection queued=$collectionQueue total=${queue.length}',
+    );
+
+    final remaining = <_SyncRecord>[];
+    for (final record in queue) {
+      if (record.collection != collection) {
+        remaining.add(record);
+        continue;
+      }
+
+      try {
+        final now = DateTime.now();
+        final payload = {
+          ...record.data,
+          'syncStatus': 'synced',
+          'lastSyncedAt': now.toIso8601String(),
+        };
+        await _setDocumentWithRest(record.collection, record.id, payload);
+        debugPrint(
+          '[FirebaseSync] REST synced ${record.collection}/${record.id}',
+        );
+      } catch (error, stackTrace) {
+        debugPrint(
+          '[FirebaseSync] REST failed ${record.collection}/${record.id}: $error',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+        remaining.add(record);
+      }
+    }
+
+    await _saveQueue(remaining);
+  }
+
+  Future<void> _setDocumentWithRest(
+    String collection,
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    final appOptions = Firebase.app().options;
+    final encodedCollection = Uri.encodeComponent(collection);
+    final encodedId = Uri.encodeComponent(id);
+    final uri = Uri.https(
+      'firestore.googleapis.com',
+      '/v1/projects/${appOptions.projectId}/databases/(default)/documents/$encodedCollection/$encodedId',
+      {'key': appOptions.apiKey},
+    );
+    final response = await http.patch(
+      uri,
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'fields': _toFirestoreFields(data)}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError(
+        'Firestore REST write failed with HTTP ${response.statusCode}: ${response.body}',
+      );
+    }
+  }
+
+  Map<String, dynamic> _toFirestoreFields(Map<String, dynamic> data) {
+    return data.map((key, value) => MapEntry(key, _toFirestoreValue(value)));
+  }
+
+  Map<String, dynamic> _toFirestoreValue(Object? value) {
+    if (value == null) return {'nullValue': null};
+    if (value is bool) return {'booleanValue': value};
+    if (value is int) return {'integerValue': value.toString()};
+    if (value is double) return {'doubleValue': value};
+    if (value is String) return {'stringValue': value};
+    if (value is DateTime) {
+      return {'timestampValue': value.toUtc().toIso8601String()};
+    }
+    if (value is Iterable) {
+      return {
+        'arrayValue': {
+          'values': value.map(_toFirestoreValue).toList(),
+        },
+      };
+    }
+    if (value is Map) {
+      return {
+        'mapValue': {
+          'fields': value.map(
+            (key, nestedValue) =>
+                MapEntry(key.toString(), _toFirestoreValue(nestedValue)),
+          ),
+        },
+      };
+    }
+    return {'stringValue': value.toString()};
   }
 
   Future<List<_SyncRecord>> _loadQueue() async {
@@ -457,6 +626,7 @@ class FirebaseSyncService {
   }
 
   FirebaseFirestore? get _safeFirestore {
+    if (_usesRestSync) return null;
     if (!_isFirestoreEnabled) return null;
 
     try {
@@ -482,12 +652,16 @@ class FirebaseSyncService {
       case TargetPlatform.android:
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
-        return true;
       case TargetPlatform.windows:
+        return true;
       case TargetPlatform.linux:
       case TargetPlatform.fuchsia:
         return false;
     }
+  }
+
+  bool get _usesRestSync {
+    return !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
   }
 }
 
