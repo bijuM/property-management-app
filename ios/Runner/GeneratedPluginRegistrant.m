@@ -30,12 +30,6 @@
 @import firebase_core;
 #endif
 
-#if __has_include(<firebase_messaging/FLTFirebaseMessagingPlugin.h>)
-#import <firebase_messaging/FLTFirebaseMessagingPlugin.h>
-#else
-@import firebase_messaging;
-#endif
-
 #if __has_include(<printing/PrintingPlugin.h>)
 #import <printing/PrintingPlugin.h>
 #else
@@ -67,7 +61,6 @@
   [ConnectivityPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"ConnectivityPlusPlugin"]];
   [FLTFirebaseAuthPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseAuthPlugin"]];
   [FLTFirebaseCorePlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseCorePlugin"]];
-  [FLTFirebaseMessagingPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseMessagingPlugin"]];
   [PrintingPlugin registerWithRegistrar:[registry registrarForPlugin:@"PrintingPlugin"]];
   [FPPSharePlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPSharePlusPlugin"]];
   [SharedPreferencesPlugin registerWithRegistrar:[registry registrarForPlugin:@"SharedPreferencesPlugin"]];
